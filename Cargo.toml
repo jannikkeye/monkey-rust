@@ -1,0 +1,13 @@
+[package]
+name = "monkey-rust"
+version = "0.1.0"
+authors = ["Jannik Keye <jannik.keye@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+interpreter = { path = "./interpreter" }
+
+[workspace]
+members = [
+    "interpreter"
+]

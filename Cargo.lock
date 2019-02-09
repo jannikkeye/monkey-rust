@@ -1,0 +1,11 @@
+[[package]]
+name = "interpreter"
+version = "0.1.0"
+
+[[package]]
+name = "monkey-rust"
+version = "0.1.0"
+dependencies = [
+ "interpreter 0.1.0",
+]
+
