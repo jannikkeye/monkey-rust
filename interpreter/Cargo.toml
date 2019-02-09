@@ -5,3 +5,7 @@ authors = ["Jannik Keye <jannik.keye@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+
+[[bin]]
+path = "./src/bin/main.rs"
+name = "repl"
