@@ -1,7 +1,7 @@
 use crate::lexer;
 use std::io::{Write, stdin, stdout};
 
-const PROMPT: &'static str = ">>";
+const PROMPT: &str = ">>";
 
 pub fn start() {
     println!("
