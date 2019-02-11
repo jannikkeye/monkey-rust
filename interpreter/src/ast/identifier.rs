@@ -1,3 +1,4 @@
+use std::fmt;
 use crate::token::Token;
 use super::Node;
 
@@ -28,5 +29,11 @@ impl Eq for Identifier {}
 impl Node for Identifier {
     fn token_literal(&self) -> &str {
         &self.token.literal
+    }
+}
+
+impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
     }
 }

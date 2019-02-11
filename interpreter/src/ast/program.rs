@@ -1,3 +1,4 @@
+use std::fmt;
 use super::{
     Node,
     statement::Statement,
@@ -22,5 +23,17 @@ impl Node for Program {
             true => self.statements[0].token_literal(),
             false => ""
         }
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut string = String::new();
+
+        for s in &self.statements {
+            string.push_str(&s.to_string());
+        }
+
+        write!(f, "{}", string)
     }
 }
