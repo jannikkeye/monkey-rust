@@ -13,10 +13,8 @@ impl PartialEq for Expression {
             Expression::Ident(ident) => {
                 match other {
                     Expression::Ident(other_ident) => ident.token == other_ident.token && ident.value == other_ident.value,
-                    _ => false,
                 }
             },
-            _ => false,
         }
     }
 }
