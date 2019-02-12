@@ -2,7 +2,8 @@ use crate::ast::{
     program::Program,
     statement::{Statement, LetStatement, ReturnStatement, ExpressionStatement},
     expression::Expression,
-    identifier::Identifier
+    identifier::Identifier,
+    int::IntegerLiteral,
 };
 use std::collections::HashMap;
 use crate::lexer::Lexer;
@@ -51,8 +52,6 @@ impl<'a> Parser<'a> {
         parser.next_token();
         parser.next_token();
 
-        println!("{:?} {:?}", parser.current_token, parser.peek_token);
-
         parser
     }
 
@@ -66,6 +65,7 @@ impl<'a> Parser<'a> {
             Some(token) => {
                 match token.kind {
                     TokenKind::IDENT => self.parse_identifier(),
+                    TokenKind::INT => self.parse_identifier(),
                     _ => None,
                 }
             },
@@ -96,7 +96,11 @@ impl<'a> Parser<'a> {
     fn parse_identifier(&mut self) -> Option<Expression> {
         match &self.current_token {
             Some(token) => {
-                Some(Expression::Ident(Identifier::new(&token, &token.literal)))
+                match token.kind {
+                    TokenKind::IDENT => Some(Expression::Ident(Identifier::new(&token, &token.literal))),
+                    TokenKind::INT => Some(Expression::Int(IntegerLiteral::new(&token, &token.literal))),
+                    _ => None,
+                }
             },
             None => None,
         }
@@ -349,10 +353,58 @@ let nine = 9;
 
                 match &p.statements[0] {
                     Statement::Expression(statement) => {
-                        println!("{:?}", statement);
                         assert_eq!(statement.token.kind, TokenKind::IDENT);
                         assert_eq!(statement.token.literal, "foobar");
                         assert!(statement.expression.is_some());
+
+                        match &statement.expression {
+                            Some(Expression::Ident(identifier)) => {
+                                assert_eq!(identifier.value, "foobar");
+                                assert_eq!(identifier.token.kind, TokenKind::IDENT);
+                                assert_eq!(identifier.token.literal, "foobar");
+                            },
+                            Some(_) => {},
+                            None => {},
+                        }
+                    },
+                    _ => panic!("statement not an expression"),
+                }
+            },
+            Err(err) => panic!(err),
+        }
+    }
+
+    #[test]
+    fn test_integer_expression() {
+        let input = "5;";
+        let mut parser = Parser::new(Lexer::new(input));
+        let program = parser.parse_program();
+
+        println!("{:#?}", program);
+
+        for e in parser.errors.iter() {
+            println!("parse error: {}", e);
+        }
+
+        match program {
+            Ok(p) => {
+                assert_eq!(p.statements.len(), 1);
+
+                match &p.statements[0] {
+                    Statement::Expression(statement) => {
+                        assert_eq!(statement.token.kind, TokenKind::INT);
+                        assert_eq!(statement.token.literal, "5");
+                        assert!(statement.expression.is_some());
+                        
+                        match &statement.expression {
+                            Some(Expression::Int(int)) => {
+                                assert_eq!(int.value, 5);
+                                assert_eq!(int.token.kind, TokenKind::INT);
+                                assert_eq!(int.token.literal, "5");
+                            },
+                            Some(_) => {},
+                            None => {},
+                        }
                     },
                     _ => panic!("statement not an expression"),
                 }

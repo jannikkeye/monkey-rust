@@ -1,6 +1,7 @@
 pub mod expression;
 pub mod identifier;
 pub mod program;
+pub mod int;
 pub mod statement;
 
 pub trait Node {
