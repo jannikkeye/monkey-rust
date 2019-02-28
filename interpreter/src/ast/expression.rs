@@ -5,6 +5,8 @@ use super::int::IntegerLiteral;
 use super::prefix::Prefix;
 use super::infix::Infix;
 use super::boolean::Boolean;
+use super::if_expression::If;
+use super::function::FunctionLiteral;
 
 #[derive(Debug, Eq)]
 pub enum Expression {
@@ -13,6 +15,8 @@ pub enum Expression {
     Bool(Boolean),
     Prefix(Prefix),
     Infix(Infix),
+    If(If),
+    Function(FunctionLiteral),
 }
 
 impl PartialEq for Expression {
@@ -20,32 +24,44 @@ impl PartialEq for Expression {
         match self {
             Expression::Ident(ident) => {
                 match other {
-                    Expression::Ident(other_ident) => ident.token == other_ident.token && ident.value == other_ident.value,
+                    Expression::Ident(other_ident) => ident == other_ident,
                     _ => false,
                 }
             },
             Expression::Int(int) => {
                 match other {
-                    Expression::Int(other_int) => int.token == other_int.token && int.value == other_int.value,
+                    Expression::Int(other_int) => int == other_int,
                     _ => false
                 }
             },
             Expression::Bool(boolean) => {
                 match other {
-                    Expression::Bool(other_boolean) => boolean.value == other_boolean.value,
+                    Expression::Bool(other_boolean) => boolean == other_boolean,
                     _ => false,
                 }
             },
             Expression::Prefix(prefix) => {
                 match other {
-                    Expression::Prefix(other_prefix) => prefix.token == other_prefix.token && prefix.operator == other_prefix.operator && prefix.right == other_prefix.right,
+                    Expression::Prefix(other_prefix) => prefix == other_prefix,
                     _ => false
                 }
             },
             Expression::Infix(infix) => {
                 match other {
-                    Expression::Infix(other_infix) => infix.token == other_infix.token && infix.operator == other_infix.operator && infix.left == other_infix.left && infix.right == other_infix.right,
+                    Expression::Infix(other_infix) => infix == other_infix,
                     _ => false
+                }
+            },
+            Expression::If(if_expression) => {
+                match other {
+                    Expression::If(other_if_expression) => if_expression == other_if_expression,
+                    _ => false,
+                }
+            },
+            Expression::Function(function) => {
+                match other {
+                    Expression::Function(other_function) => function == other_function,
+                    _ => false,
                 }
             }
         }
@@ -60,6 +76,8 @@ impl Node for Expression {
             Expression::Bool(boolean) =>&boolean.token_literal(),
             Expression::Prefix(prefix) => &prefix.token_literal(),
             Expression::Infix(infix) => &infix.token_literal(),
+            Expression::If(if_expression) => &if_expression.token_literal(),
+            Expression::Function(function) => &function.token_literal(),
         }
     }
 }
@@ -91,7 +109,9 @@ impl fmt::Display for Expression {
                     Some(expr) => expr.to_string(),
                     None => "".to_owned(),
                 },
-            )
+            ),
+            Expression::If(if_expression) => write!(f, "{}", if_expression.to_string()),
+            Expression::Function(function) => write!(f, "{}", function.to_string()),
         }
     }
 }

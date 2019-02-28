@@ -1,12 +1,14 @@
 use crate::ast::{
     program::Program,
-    statement::{Statement, LetStatement, ReturnStatement, ExpressionStatement},
+    statement::{Statement, LetStatement, ReturnStatement, ExpressionStatement, BlockStatement},
     expression::Expression,
     identifier::Identifier,
     int::IntegerLiteral,
     prefix::Prefix,
     infix::Infix,
     boolean::Boolean,
+    if_expression::If,
+    function::FunctionLiteral,
 };
 use std::collections::HashMap;
 use crate::lexer::Lexer;
@@ -80,13 +82,136 @@ impl<'a> Parser<'a> {
 
     fn parse_prefix(&mut self) -> Option<Expression> {
         if let Some(token) = &self.current_token {
-            let mut prefix = Prefix::new(token, &token.literal, None);
+            match token.kind {
+                TokenKind::IF => return self.parse_if_expression(),
+                TokenKind::FUNCTION => return self.parse_function_literal(),
+                _ => {
+                    let mut prefix = Prefix::new(token, &token.literal, None);
+
+                    self.next_token();
+
+                    prefix.right = Box::new(self.parse_expression(&Precedence::PREFIX));
+
+                    return Some(Expression::Prefix(prefix));
+                }
+            }
+        }
+
+        None
+    }
+
+    fn parse_function_literal(&mut self) -> Option<Expression> {
+        if let Some(token) = &self.current_token {
+            let mut function_literal = FunctionLiteral::new(token);
+
+            if !self.expect_peek(TokenKind::LPAREN) {
+                return None;
+            }
+
+            function_literal.paramters = self.parse_function_parameters();
+
+            if !self.expect_peek(TokenKind::LBRACE) {
+                return None;
+            }
+
+            function_literal.body = self.parse_block_statement();
+
+            return Some(Expression::Function(function_literal));
+        }
+
+        None
+    }
+
+    fn parse_function_parameters(&mut self) -> Vec<Identifier> {
+        let mut identifiers = vec![];
+
+        if self.peek_token_is(TokenKind::RPAREN) {
+            self.next_token();
+
+            return identifiers;
+        }
+
+        self.next_token();
+
+        if let Some(next_token) = &self.current_token {
+            let mut identifier = Identifier::new(next_token, &next_token.literal);
+
+            identifiers.push(identifier);
+
+            while self.peek_token_is(TokenKind::COMMA) {
+                self.next_token();
+                self.next_token();
+
+                if let Some(new_next_token) = &self.current_token {
+                    identifier = Identifier::new(new_next_token, &new_next_token.literal);
+                    identifiers.push(identifier);
+                }
+            }
+
+            if !self.expect_peek(TokenKind::RPAREN) {
+                return vec![];
+            }
+        }
+
+        identifiers
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Expression> {
+        if let Some(token) = &self.current_token {
+            let mut if_expression = If::new(&token);
+
+            if !self.expect_peek(TokenKind::LPAREN) {
+                return None;
+            }
+
 
             self.next_token();
 
-            prefix.right = Box::new(self.parse_expression(&Precedence::PREFIX));
+            if_expression.condition = Box::new(self.parse_expression(&Precedence::LOWEST));
 
-            return Some(Expression::Prefix(prefix));
+            if !self.expect_peek(TokenKind::RPAREN) {
+                return None;
+            }
+
+            if !self.expect_peek(TokenKind::LBRACE) {
+                return None;
+            }
+
+            if_expression.consequence = self.parse_block_statement();
+
+            if self.peek_token_is(TokenKind::ELSE) {
+                self.next_token();
+
+                if !self.expect_peek(TokenKind::LBRACE) {
+                    return None;
+                }
+
+                if_expression.alternative = self.parse_block_statement();
+            }
+
+            return Some(Expression::If(if_expression));
+        }
+
+        None
+    }
+
+    fn parse_block_statement(&mut self) -> Option<BlockStatement> {
+        if let Some(token) = &self.current_token {
+            let mut block = BlockStatement::new(&token);
+
+            self.next_token();
+
+            while !self.current_token_is(TokenKind::RBRACE) && !self.current_token_is(TokenKind::EOF) {
+                let statement = self.parse_statement();
+
+                if let Some(s) = statement {
+                    block.statements.push(s);
+                }
+
+                self.next_token();
+            }
+
+            return Some(block);
         }
 
         None
@@ -178,6 +303,8 @@ impl<'a> Parser<'a> {
             return match token.kind {
                 TokenKind::BANG => true,
                 TokenKind::MINUS => true,
+                TokenKind::IF => true,
+                TokenKind::FUNCTION => true,
                 _ => false
             };
         } else {
@@ -374,12 +501,9 @@ let foobar = 838383;
             println!("parse error: {}", e);
         }
 
-        println!("{:#?}", program);
-
         match program {
             Err(error) => panic!(format!("{}", error)),
             Ok(program) => {
-                println!("{:#?}", program);
                 assert_eq!(program.statements.len(), 3);
                 let tests: [(&str, &str); 3] = [
                     ("x", "5"),
@@ -418,7 +542,6 @@ return 993322;
         match program {
             Err(error) => panic!(format!("{}", error)),
             Ok(program) => {
-                println!("{:#?}", program);
                 assert_eq!(program.statements.len(), 3);
                 let tests: [&str; 3] = [
                     "5",
@@ -503,8 +626,6 @@ let nine = 9;
         let input = "5;";
         let mut parser = Parser::new(Lexer::new(input));
         let program = parser.parse_program();
-
-        println!("{:#?}", program);
 
         for e in parser.errors.iter() {
             println!("parse error: {}", e);
@@ -776,5 +897,170 @@ let nine = 9;
         }
 
         assert_eq!(input, program.to_string());
+    }
+
+    #[test]
+    fn test_if_expressions() {
+        let input = "if (x < y) { x }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().expect("failed to parse program");
+
+        assert_eq!(program.statements.len(), 1);
+
+        println!("{:#?}", program);
+
+        match &program.statements[0] {
+            Statement::Expression(statement) => {
+                assert_eq!(statement.token.kind, TokenKind::IF);
+
+                match &statement.expression {
+                    Some(Expression::If(if_expression)) => {
+                        assert_eq!(if_expression.token.kind, TokenKind::IF);
+
+                        if let Some(consequence) = &if_expression.consequence {
+                            assert_eq!(consequence.token.kind, TokenKind::LBRACE);
+
+                            match &consequence.statements[0] {
+                                Statement::Expression(statement) => {
+                                    match &statement.expression {
+                                        Some(Expression::Ident(ident)) => {
+                                            assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                            assert_eq!(ident.value, "x");
+                                        },
+                                        Some(_) | None => panic!("not an identifier expression"),
+                                    }
+                                },
+                                _ => panic!("not an expression statement")
+                            }
+                        }
+
+                        assert!(if_expression.alternative.is_none());
+                    },
+                    _ => panic!("not an if expression"),
+                }
+            },
+            _ => panic!("not an expression statement"),
+        }    
+    }
+
+    #[test]
+    fn test_if_else_expressions() {
+        let input = "if (x < y) { x } else { y }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().expect("failed to parse program");
+
+        assert_eq!(program.statements.len(), 1);
+
+        match &program.statements[0] {
+            Statement::Expression(statement) => {
+                assert_eq!(statement.token.kind, TokenKind::IF);
+
+                match &statement.expression {
+                    Some(Expression::If(if_expression)) => {
+                        assert_eq!(if_expression.token.kind, TokenKind::IF);
+
+                        if let Some(consequence) = &if_expression.consequence {
+                            assert_eq!(consequence.token.kind, TokenKind::LBRACE);
+
+                            match &consequence.statements[0] {
+                                Statement::Expression(statement) => {
+                                    match &statement.expression {
+                                        Some(Expression::Ident(ident)) => {
+                                            assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                            assert_eq!(ident.value, "x");
+                                        },
+                                        Some(_) | None => panic!("not an identifier expression"),
+                                    }
+                                },
+                                _ => panic!("not an expression statement")
+                            }
+                        }
+
+                        if let Some(alternative) = &if_expression.alternative {
+                            assert_eq!(alternative.token.kind, TokenKind::LBRACE);
+
+                            match &alternative.statements[0] {
+                                Statement::Expression(statement) => {
+                                    match &statement.expression {
+                                        Some(Expression::Ident(ident)) => {
+                                            assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                            assert_eq!(ident.value, "y");
+                                        },
+                                        Some(_) | None => panic!("not an identifier expression"),
+                                    }
+                                },
+                                _ => panic!("not an expression statement"),
+                            }
+                        }
+                    },
+                    _ => panic!("not an if expression"),
+                }
+            },
+            _ => panic!("not an expression statement"),
+        }
+    }
+
+    #[test]
+    fn test_function_literal() {
+        let input = "fn(x, y) { x + y }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().expect("failed to parse program");
+
+        assert_eq!(program.statements.len(), 1);
+
+        match &program.statements[0] {
+            Statement::Expression(statement) => {
+                assert_eq!(statement.token.kind, TokenKind::FUNCTION);
+
+                match &statement.expression {
+                    Some(Expression::Function(function_expression)) => {
+                        assert_eq!(function_expression.token.kind, TokenKind::FUNCTION);
+
+                        assert_eq!(function_expression.paramters[0].token, Token::from_literal("x"));
+                        assert_eq!(function_expression.paramters[1].token, Token::from_literal("y"));
+
+                        if let Some(body) = &function_expression.body {
+                            assert_eq!(body.token.kind, TokenKind::LBRACE);
+
+                            match &body.statements[0] {
+                                Statement::Expression(statement) => {
+                                    match &statement.expression {
+                                        Some(Expression::Infix(infix)) => {
+                                            assert_eq!(infix.token.kind, TokenKind::PLUS);
+                                            assert_eq!(infix.operator, "+");
+
+                                            match &*infix.left {
+                                                Some(Expression::Ident(ident)) => {
+                                                    assert_eq!(ident.value, "x");
+                                                    assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                                },
+                                                Some(_) => panic!("Expected identifier expression. Got None."),
+                                                None => panic!("Expected integer expression. Got None.")
+                                            }
+
+                                            match &*infix.right {
+                                                Some(Expression::Ident(ident)) => {
+                                                    assert_eq!(ident.value, "y");
+                                                    assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                                },
+                                                Some(_) => panic!("Expected identifier expression. Got None."),
+                                                None => panic!("Expected integer expression. Got None.")
+                                            }
+                                        },
+                                        Some(_) | None => panic!("not an identifier expression"),
+                                    }
+                                },
+                                _ => panic!("not an expression statement")
+                            }
+                        }
+                    },
+                    _ => panic!("not an if expression"),
+                }
+            },
+            _ => panic!("not an expression statement"),
+        }
     }
 }
