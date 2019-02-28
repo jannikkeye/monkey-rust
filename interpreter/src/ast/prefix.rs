@@ -2,7 +2,7 @@ use crate::token::Token;
 use super::expression::Expression;
 use super::Node;
 
-#[derive(Debug)]
+#[derive(Debug, Eq)]
 pub struct Prefix {
     pub token: Token,
     pub operator: String,
@@ -16,6 +16,12 @@ impl Prefix {
             operator: operator.to_owned(),
             right: Box::new(right),
         }
+    }
+}
+
+impl PartialEq for Prefix {
+    fn eq(&self, other: &Prefix) -> bool {
+        self.token == other.token && self.operator == other.operator && self.right == other.right
     }
 }
 

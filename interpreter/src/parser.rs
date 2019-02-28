@@ -189,7 +189,7 @@ impl<'a> Parser<'a> {
     fn is_infix_expression(&self) -> bool {
         if let Some(token) = &self.current_token {
             if let Some(peek_token) = &self.peek_token {
-                if token.kind == TokenKind::IDENT || token.kind == TokenKind::INT {
+                if token.kind == TokenKind::IDENT || token.kind == TokenKind::INT || token.kind == TokenKind::TRUE || token.kind == TokenKind::FALSE {
                     return match peek_token.kind {
                         TokenKind::PLUS => true,
                         TokenKind::MINUS => true,
@@ -228,6 +228,7 @@ impl<'a> Parser<'a> {
 
             return left_expr;
         }
+
 
         left_expr
     }
@@ -638,6 +639,128 @@ let nine = 9;
                                     Some(Expression::Int(int)) => {
                                         assert_eq!(int.value, 5);
                                         assert_eq!(int.token.kind, TokenKind::INT);
+                                    },
+                                    Some(_) => panic!("Expected integer expression. Got None."),
+                                    None => panic!("Expected integer expression. Got None.")
+                                }
+                            },
+                            Some(_) => {},
+                            None => {},
+                        }
+                    },
+                    _ => panic!("statement not an expression"),
+                }
+                },
+                Err(err) => panic!(err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_infix_expressions() {
+        struct Test<'a> {
+            input: &'a str,
+            left_value: Expression,
+            operator: &'a str,
+            right_value: Expression,
+        }
+
+        impl<'a> Test<'a> {
+            pub fn new(input: &'a str, left_value: Expression, operator: &'a str, right_value: Expression) -> Self {
+                Test {
+                    input, left_value, operator, right_value,
+                }
+            }
+        }
+
+        let tests: Vec<Test> = vec![
+            Test::new("5 + 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "+", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("true == true", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)), "==", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true))),
+            Test::new("true != 100", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true )), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "100"), "100"))),
+        ];
+
+        for test in tests.iter() {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program().expect("failed to parse program");
+
+            assert_eq!(program.statements.len(), 1);
+
+            match &program.statements[0] {
+                Statement::Expression(expression_statement) => {
+                    match &expression_statement.expression {
+                        Some(Expression::Infix(infix)) => {
+                            match &*infix.left {
+                                Some(expression) => assert_eq!(expression, &test.left_value),
+                                None => panic!("no left expression found"),
+                            };
+
+                            assert_eq!(infix.operator, test.operator);
+
+                            match &*infix.right {
+                                Some(expression) => assert_eq!(expression, &test.right_value),
+                                None => panic!("no left expression found"),
+                            };
+                        },
+                        Some(_) | None => panic!("expected infix expression")
+                    }
+                },
+                _ => panic!("expected infix expression"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_boolean_infix_expression() {
+        struct Test {
+
+        }
+
+        let inputs = vec!["true == true;"];
+        let operators = vec!["=="];
+        let token_kinds = vec![TokenKind::EQ];
+
+        for (index, input) in inputs.iter().enumerate() {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+
+            for e in parser.errors.iter() {
+                println!("parse error: {}", e);
+            }
+
+
+            match program {
+                Ok(p) => {
+                    println!("{:?}", p.to_string());
+                    assert_eq!(p.statements.len(), 1);
+
+                match &p.statements[0] {
+                    Statement::Expression(statement) => {
+                        assert_eq!(statement.token.kind, TokenKind::TRUE);
+                        assert_eq!(statement.token.literal, "true");
+                        assert!(statement.expression.is_some());
+
+                        match &statement.expression {
+                            Some(Expression::Infix(infix)) => {
+                                assert_eq!(infix.token.kind, token_kinds[index]);
+                                assert_eq!(infix.operator, operators[index]);
+                                assert!(infix.right.is_some());
+                                
+                                match &*infix.left {
+                                    Some(Expression::Bool(boolean)) => {
+                                        assert_eq!(boolean.value, true);
+                                        assert_eq!(boolean.token.kind, TokenKind::TRUE);
+                                    },
+                                    Some(_) => panic!("Expected integer expression. Got None."),
+                                    None => panic!("Expected integer expression. Got None.")
+                                }
+
+                                match &*infix.right {
+                                    Some(Expression::Bool(boolean)) => {
+                                        assert_eq!(boolean.value, true);
+                                        assert_eq!(boolean.token.kind, TokenKind::TRUE);
                                     },
                                     Some(_) => panic!("Expected integer expression. Got None."),
                                     None => panic!("Expected integer expression. Got None.")

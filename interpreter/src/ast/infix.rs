@@ -21,6 +21,14 @@ impl Infix {
     }
 }
 
+impl PartialEq for Infix {
+    fn eq(&self, other: &Infix) -> bool {
+        self.token == other.token && self.operator == other.operator && self.right == other.right && self.left == other.left
+    }
+}
+
+impl Eq for Infix {}
+
 impl Node for Infix {
     fn token_literal(&self) -> &str {
         &self.token.literal

@@ -6,7 +6,7 @@ use super::prefix::Prefix;
 use super::infix::Infix;
 use super::boolean::Boolean;
 
-#[derive(Debug)]
+#[derive(Debug, Eq)]
 pub enum Expression {
     Ident(Identifier),
     Int(IntegerLiteral),
@@ -51,8 +51,6 @@ impl PartialEq for Expression {
         }
     }
 }
-
-impl Eq for Expression {}
 
 impl Node for Expression {
     fn token_literal(&self) -> &str {

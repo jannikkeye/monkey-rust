@@ -4,7 +4,7 @@ use super::Node;
 use crate::token::Token;
 
 
-#[derive(Debug)]
+#[derive(Debug, Eq)]
 pub struct Boolean {
     pub token: Token,
     pub value: bool,
@@ -16,6 +16,12 @@ impl Boolean {
             token: token.clone(),
             value,
         }
+    }
+}
+
+impl PartialEq for Boolean {
+    fn eq(&self, other: &Boolean) -> bool {
+        self.token == other.token && self.value == other.value
     }
 }
 

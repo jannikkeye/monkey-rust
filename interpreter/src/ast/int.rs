@@ -1,7 +1,7 @@
 use crate::token::Token;
 use super::Node;
 
-#[derive(Debug)]
+#[derive(Debug, Eq)]
 pub struct IntegerLiteral {
     pub token: Token,
     pub value: i64,
@@ -16,6 +16,12 @@ impl IntegerLiteral {
             value: parsed_value,
         }
         
+    }
+}
+
+impl PartialEq for IntegerLiteral {
+    fn eq(&self, other: &IntegerLiteral) -> bool {
+        self.token == other.token && self.value == other.value
     }
 }
 
