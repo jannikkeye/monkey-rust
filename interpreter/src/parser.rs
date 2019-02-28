@@ -14,7 +14,7 @@ use crate:: token::{Token, TokenKind};
 use std::{error::Error, fmt};
 
 #[repr(C)]
-#[derive(PartialEq, PartialOrd, Copy, Clone)]
+#[derive(PartialEq, PartialOrd, Copy, Clone, Debug)]
 enum Precedence {
     LOWEST = 1,
     EQUALS = 2,
@@ -98,7 +98,6 @@ impl<'a> Parser<'a> {
             let precedence = self.current_precedence();
             
             self.next_token();
-
 
             infix.right = Box::new(self.parse_expression(&precedence));
 
@@ -220,13 +219,14 @@ impl<'a> Parser<'a> {
         };
 
         while !self.peek_token_is(TokenKind::SEMICOLON) && precendence < self.peek_precedence() {
-            if self.is_infix_expression() {
-                self.next_token();
+            if !self.is_infix_expression() {
 
-                left_expr = self.parse_infix(left_expr);
+                return left_expr;
             }
 
-            return left_expr;
+            self.next_token();
+
+            left_expr = self.parse_infix(left_expr);
         }
 
 
@@ -538,123 +538,53 @@ let nine = 9;
     }
 
     #[test]
-    fn test_prefix_expression() {
-        let inputs = vec!["!5;", "-15;"];
-        let operators = vec!["!", "-"];
-        let integer_values = vec![5, 15];
-        let token_kinds = vec![TokenKind::BANG, TokenKind::MINUS];
-        let token_literals = vec!["!", "-"];
-        let integer_literals = vec!["5", "15"];
+    fn test_prefix_expressions() {
+        struct Test<'a> {
+            input: &'a str,
+            operator: &'a str,
+            right_value: Expression,
+        }
 
-        for (index, input) in inputs.iter().enumerate() {
-            let lexer = Lexer::new(input);
-            let mut parser = Parser::new(lexer);
-            let program = parser.parse_program();
-
-            for e in parser.errors.iter() {
-                println!("parse error: {}", e);
-            }
-
-            match program {
-                Ok(program) => {
-                    assert_eq!(program.statements.len(), 1);
-
-                match &program.statements[0] {
-                    Statement::Expression(statement) => {
-                        assert_eq!(statement.token.kind, token_kinds[index]);
-                        assert_eq!(statement.token.literal, token_literals[index]);
-                        assert!(statement.expression.is_some());
-                        
-                        match &statement.expression {
-                            Some(Expression::Prefix(prefix)) => {
-                                assert_eq!(prefix.token.kind, token_kinds[index]);
-                                assert_eq!(prefix.operator, operators[index]);
-                                assert!(prefix.right.is_some());
-                                
-                                match &*prefix.right {
-                                    Some(Expression::Int(int)) => {
-                                        assert_eq!(int.value, integer_values[index]);
-                                        assert_eq!(int.token.kind, TokenKind::INT);
-                                    },
-                                    Some(_) => panic!("Expected integer expression. Got None."),
-                                    None => panic!("Expected integer expression. Got None.")
-                                }
-                            },
-                            Some(_) => {},
-                            None => {},
-                        }
-                    },
-                    _ => panic!("statement not an expression"),
+        impl<'a> Test<'a> {
+            pub fn new(input: &'a str, operator: &'a str, right_value: Expression) -> Self {
+                Test {
+                    input, operator, right_value,
                 }
-                },
-                Err(err) => panic!(err),
             }
+        }
+
+        let tests = vec![
+            Test::new("!5", "!", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("!true", "!", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true))),
+            Test::new("-variable", "-", Expression::Ident(Identifier::new(&Token::from_literal("variable"), "variable")))
+        ];
+
+        for test in tests.iter() {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program().expect("failed to parse program");
+
+            assert_eq!(program.statements.len(), 1);
+
+            match &program.statements[0] {
+                Statement::Expression(expression_statement) => {
+                    match &expression_statement.expression {
+                        Some(Expression::Prefix(prefix)) => {
+                            assert_eq!(prefix.operator, test.operator);
+
+                            match &*prefix.right {
+                                Some(expression) => assert_eq!(expression, &test.right_value),
+                                None => panic!("no right expression found"),
+                            };
+                        },
+                        Some(_) | None => panic!("no prefix expression found"),
+                    }
+                },
+                _ => panic!("no statement found"),
+            };
         }
     }
 
-    #[test]
-    fn test_infix_expression() {
-        let inputs = vec!["5 + 5;", " 5 - 5;", "5 * 5;", "5 / 5;", "5 > 5;", "5 < 5;", "5 == 5", "5 != 5"];
-        let operators = vec!["+", "-", "*", "/", ">", "<", "==", "!="];
-        let token_kinds = vec![TokenKind::PLUS, TokenKind::MINUS, TokenKind::ASTERIKS, TokenKind::SLASH, TokenKind::GT, TokenKind::LT, TokenKind::EQ, TokenKind::NEQ];
-
-        for (index, input) in inputs.iter().enumerate() {
-            let lexer = Lexer::new(input);
-            let mut parser = Parser::new(lexer);
-            let program = parser.parse_program();
-
-
-            for e in parser.errors.iter() {
-                println!("parse error: {}", e);
-            }
-
-
-            match program {
-                Ok(p) => {
-                    println!("{:?}", p.to_string());
-                    assert_eq!(p.statements.len(), 1);
-
-                match &p.statements[0] {
-                    Statement::Expression(statement) => {
-                        assert_eq!(statement.token.kind, TokenKind::INT);
-                        assert_eq!(statement.token.literal, "5");
-                        assert!(statement.expression.is_some());
-
-                        match &statement.expression {
-                            Some(Expression::Infix(infix)) => {
-                                assert_eq!(infix.token.kind, token_kinds[index]);
-                                assert_eq!(infix.operator, operators[index]);
-                                assert!(infix.right.is_some());
-                                
-                                match &*infix.left {
-                                    Some(Expression::Int(int)) => {
-                                        assert_eq!(int.value, 5);
-                                        assert_eq!(int.token.kind, TokenKind::INT);
-                                    },
-                                    Some(_) => panic!("Expected integer expression. Got None."),
-                                    None => panic!("Expected integer expression. Got None.")
-                                }
-
-                                match &*infix.right {
-                                    Some(Expression::Int(int)) => {
-                                        assert_eq!(int.value, 5);
-                                        assert_eq!(int.token.kind, TokenKind::INT);
-                                    },
-                                    Some(_) => panic!("Expected integer expression. Got None."),
-                                    None => panic!("Expected integer expression. Got None.")
-                                }
-                            },
-                            Some(_) => {},
-                            None => {},
-                        }
-                    },
-                    _ => panic!("statement not an expression"),
-                }
-                },
-                Err(err) => panic!(err),
-            }
-        }
-    }
 
     #[test]
     fn test_infix_expressions() {
@@ -741,7 +671,6 @@ let nine = 9;
 
             match program {
                 Ok(p) => {
-                    println!("{:?}", p.to_string());
                     assert_eq!(p.statements.len(), 1);
 
                 match &p.statements[0] {
@@ -785,6 +714,34 @@ let nine = 9;
             }
         }
     }
+
+    #[test]
+    fn test_operator_precedence_parsing() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: &'a str,
+        }
+
+        let tests = vec![
+            Test { input: "true", expected: "true" },
+            Test { input: "false", expected: "false" },
+            Test { input: "-1 * 2 + 3", expected: "(((-1) * 2) + 3)" },
+            Test { input: "3 > 5 == false", expected: "((3 > 5) == false)" },
+            Test { input: "3 < 5 == true", expected: "((3 < 5) == true)" },
+            Test { input: "-3 * 5 != true / -100", expected: "(((-3) * 5) != (true / (-100)))"}
+        ];
+
+        for test in tests.iter() {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            if let Ok(p) = program {
+                assert_eq!(test.expected, p.to_string());
+            }
+
+        }
+    }
     
     #[test]
     fn test_boolean_expression() {
@@ -794,8 +751,6 @@ let nine = 9;
         let program = parser.parse_program().unwrap();
 
         assert_eq!(program.statements.len(), 1);
-
-        println!("Test:  asdadasd {:#?}", program);
 
         match &program.statements[0] {
             Statement::Let(let_statement) => {
