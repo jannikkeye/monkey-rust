@@ -95,6 +95,14 @@ impl fmt::Display for Statement {
                     None => String::new(),
                 }
             ),
+            Statement::Expression(s) => write!(
+                f,
+                "{}",
+                match &s.expression {
+                    Some(e) => e.to_string(),
+                    None => String::new(),
+                }
+            ),
             _ => write!(f, "")
         }
     }

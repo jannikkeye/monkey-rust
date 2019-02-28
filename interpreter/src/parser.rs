@@ -5,6 +5,8 @@ use crate::ast::{
     identifier::Identifier,
     int::IntegerLiteral,
     prefix::Prefix,
+    infix::Infix,
+    boolean::Boolean,
 };
 use std::collections::HashMap;
 use crate::lexer::Lexer;
@@ -12,6 +14,7 @@ use crate:: token::{Token, TokenKind};
 use std::{error::Error, fmt};
 
 #[repr(C)]
+#[derive(PartialEq, PartialOrd, Copy, Clone)]
 enum Precedence {
     LOWEST = 1,
     EQUALS = 2,
@@ -27,6 +30,7 @@ struct Parser<'a> {
     current_token: Option<Token>,
     peek_token: Option<Token>,
     errors: Vec<String>,
+    precedences: HashMap<TokenKind, Precedence>,
 }
 
 #[derive(Debug)]
@@ -45,7 +49,23 @@ impl<'a> Parser<'a> {
             current_token: None,
             peek_token: None,
             errors: vec![],
+            precedences: HashMap::with_capacity(8)
         };
+
+        let precedences = vec![
+            (TokenKind::EQ, Precedence::EQUALS),
+            (TokenKind::NEQ, Precedence::EQUALS),
+            (TokenKind::LT, Precedence::LESSGREATER),
+            (TokenKind::GT, Precedence::LESSGREATER),
+            (TokenKind::PLUS, Precedence::SUM),
+            (TokenKind::MINUS, Precedence::SUM),
+            (TokenKind::SLASH, Precedence::PRODUCT),
+            (TokenKind::ASTERIKS, Precedence::PRODUCT),
+        ];
+
+        for p in precedences {
+            parser.precedences.insert(p.0, p.1);
+        }
 
         parser.next_token();
         parser.next_token();
@@ -64,9 +84,25 @@ impl<'a> Parser<'a> {
 
             self.next_token();
 
-            prefix.right = Box::new(self.parse_expression(Precedence::PREFIX));
+            prefix.right = Box::new(self.parse_expression(&Precedence::PREFIX));
 
             return Some(Expression::Prefix(prefix));
+        }
+
+        None
+    }
+
+    fn parse_infix(&mut self, left: Option<Expression>) -> Option<Expression> {
+        if let Some(token) = self.current_token.clone() {
+            let mut infix = Infix::new(&token, left, &token.literal, None);
+            let precedence = self.current_precedence();
+            
+            self.next_token();
+
+
+            infix.right = Box::new(self.parse_expression(&precedence));
+
+            return Some(Expression::Infix(infix));
         }
 
         None
@@ -77,11 +113,8 @@ impl<'a> Parser<'a> {
 
         
         while let Some(token) = &self.current_token {
-            println!("{:?}", token);
             if token.kind != TokenKind::EOF {
                 let statement = self.parse_statement();
-
-                println!("{:?}", statement);
 
                 match statement {
                     Some(statement) => program.statements.push(statement),
@@ -100,6 +133,8 @@ impl<'a> Parser<'a> {
             return match token.kind {
                 TokenKind::IDENT => Some(Expression::Ident(Identifier::new(&token, &token.literal))),
                 TokenKind::INT => Some(Expression::Int(IntegerLiteral::new(&token, &token.literal))),
+                TokenKind::TRUE => Some(Expression::Bool(Boolean::new(&token, true))),
+                TokenKind::FALSE => Some(Expression::Bool(Boolean::new(&token, false))),
                 _ => None,
             };
         }
@@ -123,7 +158,7 @@ impl<'a> Parser<'a> {
         if let Some(token) = &mut self.current_token {
             let mut statement = ExpressionStatement::new(token);
 
-            statement.expression = self.parse_expression(Precedence::LOWEST);
+            statement.expression = self.parse_expression(&Precedence::LOWEST);
 
             if self.peek_token_is(TokenKind::SEMICOLON) {
                 self.next_token();
@@ -151,18 +186,62 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression(&mut self, precendence: Precedence) -> Option<Expression> {
+    fn is_infix_expression(&self) -> bool {
+        if let Some(token) = &self.current_token {
+            if let Some(peek_token) = &self.peek_token {
+                if token.kind == TokenKind::IDENT || token.kind == TokenKind::INT {
+                    return match peek_token.kind {
+                        TokenKind::PLUS => true,
+                        TokenKind::MINUS => true,
+                        TokenKind::SLASH => true,
+                        TokenKind::ASTERIKS => true,
+                        TokenKind::EQ => true,
+                        TokenKind::NEQ => true,
+                        TokenKind::LT => true,
+                        TokenKind::GT => true,
+                        _ => false,
+                    }
+                }
+            }
+
+            return false;
+        } else {
+            return false;
+        }
+    }
+
+    fn parse_expression(&mut self, precendence: &Precedence) -> Option<Expression> {
+        let mut left_expr;
+        
         if self.is_prefix_expression() {
-            return self.parse_prefix();
+            left_expr = self.parse_prefix();
+        } else {
+            left_expr = self.parse_identifier();
+        };
+
+        while !self.peek_token_is(TokenKind::SEMICOLON) && precendence < self.peek_precedence() {
+            if self.is_infix_expression() {
+                self.next_token();
+
+                left_expr = self.parse_infix(left_expr);
+            }
+
+            return left_expr;
         }
 
-        self.parse_identifier()
+        left_expr
     }
 
     fn parse_return_statement(&mut self) -> Option<Statement> {
         match &mut self.current_token {
             Some(token) => {
-                let return_statement = ReturnStatement::new(&token);
+                let mut return_statement = ReturnStatement::new(&token);
+
+                self.next_token();
+
+                return_statement.return_value = self.parse_expression(&Precedence::LOWEST);
+
+                self.next_token();
 
                 self.next_token();
 
@@ -190,9 +269,15 @@ impl<'a> Parser<'a> {
                     return None;
                 }
 
+                self.next_token();
+
                 while !self.current_token_is(TokenKind::SEMICOLON) {
+                    let_statement.value = self.parse_expression(&Precedence::LOWEST);
+
                     self.next_token();
                 }
+
+                self.next_token();
 
                 Some(Statement::Let(let_statement))
             },
@@ -211,6 +296,30 @@ impl<'a> Parser<'a> {
         match &self.peek_token {
             Some(token) => token.kind == kind,
             None => false,
+        }
+    }
+
+    fn current_precedence(&self) -> Precedence {
+        match &self.current_token {
+            Some(token) => {
+                match self.precedences.get(&token.kind) {
+                    Some(precedence) => precedence.clone(),
+                    None => Precedence::LOWEST,
+                }
+            },
+            None => Precedence::LOWEST,
+        }
+    }
+
+    fn peek_precedence(&self) -> &Precedence {
+        match &self.peek_token {
+            Some(token) => {
+                match self.precedences.get(&token.kind) {
+                    Some(precedence) => precedence,
+                    None => &Precedence::LOWEST,
+                }
+            },
+            None => &Precedence::LOWEST,
         }
     }
 
@@ -264,6 +373,8 @@ let foobar = 838383;
             println!("parse error: {}", e);
         }
 
+        println!("{:#?}", program);
+
         match program {
             Err(error) => panic!(format!("{}", error)),
             Ok(program) => {
@@ -311,7 +422,7 @@ return 993322;
                 let tests: [&str; 3] = [
                     "5",
                     "10",
-                    "838383",
+                    "993322",
                 ];
 
                 for (i, return_value) in tests.iter().enumerate() {
@@ -439,8 +550,6 @@ let nine = 9;
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
 
-            println!("{:#?}", program);
-
             for e in parser.errors.iter() {
                 println!("parse error: {}", e);
             }
@@ -456,10 +565,19 @@ let nine = 9;
                         assert!(statement.expression.is_some());
                         
                         match &statement.expression {
-                            Some(Expression::Int(int)) => {
-                                assert_eq!(int.value, integer_values[index]);
-                                assert_eq!(int.token.kind, TokenKind::INT);
-                                assert_eq!(int.token.literal, integer_literals[index]);
+                            Some(Expression::Prefix(prefix)) => {
+                                assert_eq!(prefix.token.kind, token_kinds[index]);
+                                assert_eq!(prefix.operator, operators[index]);
+                                assert!(prefix.right.is_some());
+                                
+                                match &*prefix.right {
+                                    Some(Expression::Int(int)) => {
+                                        assert_eq!(int.value, integer_values[index]);
+                                        assert_eq!(int.token.kind, TokenKind::INT);
+                                    },
+                                    Some(_) => panic!("Expected integer expression. Got None."),
+                                    None => panic!("Expected integer expression. Got None.")
+                                }
                             },
                             Some(_) => {},
                             None => {},
@@ -471,5 +589,106 @@ let nine = 9;
                 Err(err) => panic!(err),
             }
         }
+    }
+
+    #[test]
+    fn test_infix_expression() {
+        let inputs = vec!["5 + 5;", " 5 - 5;", "5 * 5;", "5 / 5;", "5 > 5;", "5 < 5;", "5 == 5", "5 != 5"];
+        let operators = vec!["+", "-", "*", "/", ">", "<", "==", "!="];
+        let token_kinds = vec![TokenKind::PLUS, TokenKind::MINUS, TokenKind::ASTERIKS, TokenKind::SLASH, TokenKind::GT, TokenKind::LT, TokenKind::EQ, TokenKind::NEQ];
+
+        for (index, input) in inputs.iter().enumerate() {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+
+            for e in parser.errors.iter() {
+                println!("parse error: {}", e);
+            }
+
+
+            match program {
+                Ok(p) => {
+                    println!("{:?}", p.to_string());
+                    assert_eq!(p.statements.len(), 1);
+
+                match &p.statements[0] {
+                    Statement::Expression(statement) => {
+                        assert_eq!(statement.token.kind, TokenKind::INT);
+                        assert_eq!(statement.token.literal, "5");
+                        assert!(statement.expression.is_some());
+
+                        match &statement.expression {
+                            Some(Expression::Infix(infix)) => {
+                                assert_eq!(infix.token.kind, token_kinds[index]);
+                                assert_eq!(infix.operator, operators[index]);
+                                assert!(infix.right.is_some());
+                                
+                                match &*infix.left {
+                                    Some(Expression::Int(int)) => {
+                                        assert_eq!(int.value, 5);
+                                        assert_eq!(int.token.kind, TokenKind::INT);
+                                    },
+                                    Some(_) => panic!("Expected integer expression. Got None."),
+                                    None => panic!("Expected integer expression. Got None.")
+                                }
+
+                                match &*infix.right {
+                                    Some(Expression::Int(int)) => {
+                                        assert_eq!(int.value, 5);
+                                        assert_eq!(int.token.kind, TokenKind::INT);
+                                    },
+                                    Some(_) => panic!("Expected integer expression. Got None."),
+                                    None => panic!("Expected integer expression. Got None.")
+                                }
+                            },
+                            Some(_) => {},
+                            None => {},
+                        }
+                    },
+                    _ => panic!("statement not an expression"),
+                }
+                },
+                Err(err) => panic!(err),
+            }
+        }
+    }
+    
+    #[test]
+    fn test_boolean_expression() {
+        let input = "let boolean = true;";
+        let mut lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+
+        println!("Test:  asdadasd {:#?}", program);
+
+        match &program.statements[0] {
+            Statement::Let(let_statement) => {
+                assert_eq!(let_statement.token.kind, TokenKind::LET);
+
+                match &let_statement.name {
+                    Some(name) => {
+                        assert_eq!(name.token.kind, TokenKind::IDENT);
+                        assert_eq!(name.value, "boolean");
+                    },
+                    None => panic!("boolean expression failed")
+                }
+
+                match &let_statement.value {
+                    Some(Expression::Bool(boolean)) => {
+                        assert_eq!(boolean.token.kind, TokenKind::TRUE);
+                        assert_eq!(boolean.value, true);
+                    },
+                    Some(_) | None => panic!("boolean expression test failed"),
+                }
+            },
+            _ => panic!("boolean expression test failed"),
+        }
+
+        assert_eq!(input, program.to_string());
     }
 }
