@@ -25,7 +25,7 @@ enum Precedence {
     CALL = 7,
 }
 
-struct Parser<'a> {
+pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Option<Token>,
     peek_token: Option<Token>,
@@ -34,7 +34,7 @@ struct Parser<'a> {
 }
 
 #[derive(Debug)]
-struct ProgramParsingError;
+pub struct ProgramParsingError;
 impl Error for ProgramParsingError {}
 impl fmt::Display for ProgramParsingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -108,7 +108,7 @@ impl<'a> Parser<'a> {
         None
     }
 
-    fn parse_program(&mut self) -> Result<Program, ProgramParsingError> {
+    pub fn parse_program(&mut self) -> Result<Program, ProgramParsingError> {
         let mut program = Program::new();
 
         
@@ -675,8 +675,16 @@ let nine = 9;
 
         let tests: Vec<Test> = vec![
             Test::new("5 + 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "+", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("5 - 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "-", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("5 * 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "*", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("5 / 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "/", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("5 > 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), ">", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("5 < 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "<", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("5 == 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "==", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
+            Test::new("5 != 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
             Test::new("true == true", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)), "==", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true))),
-            Test::new("true != 100", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true )), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "100"), "100"))),
+            Test::new("true != 100", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "100"), "100"))),
+            Test::new("variable != 100", Expression::Ident(Identifier::new(&Token::from_literal("variable"), "variable")), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "100"), "100"))),
         ];
 
         for test in tests.iter() {
