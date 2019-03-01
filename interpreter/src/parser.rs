@@ -31,7 +31,7 @@ pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Option<Token>,
     peek_token: Option<Token>,
-    errors: Vec<String>,
+    pub errors: Vec<String>,
     precedences: HashMap<TokenKind, Precedence>,
 }
 

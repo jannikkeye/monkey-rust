@@ -17,8 +17,19 @@ pub fn start() {
 
         let lexer = lexer::Lexer::new(&input);
         let mut parser = parser::Parser::new(lexer);
-        let program = parser.parse_program();
+        let program = parser.parse_program().expect("parsing failed");
 
-        println!("{:#?}", program);
+        if parser.errors.len() > 0 {
+            println!("Whoops! We ran into some monkey business here!");
+            println!("parse errors:");
+            for e in parser.errors.iter() {
+                println!("\t{}", e);
+            }
+
+            continue;
+        }
+        
+
+        println!("{}", program);
     }
 }
