@@ -1,6 +1,6 @@
 use std::fmt;
 use crate::token::Token;
-use super::Node;
+use super::{Node, NodeKind};
 
 #[derive(Debug)]
 pub struct Identifier {
@@ -29,6 +29,10 @@ impl Eq for Identifier {}
 impl Node for Identifier {
     fn token_literal(&self) -> &str {
         &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Identifier(self)
     }
 }
 

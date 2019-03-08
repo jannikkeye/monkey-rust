@@ -1,7 +1,7 @@
 use crate::token::Token;
 use super::identifier::Identifier;
 use super::statement::BlockStatement;
-use super::Node;
+use super::{Node, NodeKind};
 use std::fmt;
 
 #[derive(Debug, Eq)]
@@ -24,6 +24,10 @@ impl FunctionLiteral {
 impl Node for FunctionLiteral {
     fn token_literal(&self) -> &str {
         &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Function(self)
     }
 }
 

@@ -9,6 +9,20 @@ pub mod boolean;
 pub mod if_expression;
 pub mod function;
 
+pub enum NodeKind<'a> {
+    Expression(&'a expression::Expression),
+    Identifier(&'a identifier::Identifier),
+    Program(&'a program::Program),
+    Integer(&'a int::IntegerLiteral),
+    Statement(&'a statement::Statement),
+    Prefix(&'a prefix::Prefix),
+    Infix(&'a infix::Infix),
+    Boolean(&'a boolean::Boolean),
+    If(&'a if_expression::If),
+    Function(&'a function::FunctionLiteral),
+}
+
 pub trait Node {
     fn token_literal(&self) -> &str;
+    fn kind(&self) -> NodeKind;
 }

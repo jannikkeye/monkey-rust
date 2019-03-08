@@ -264,7 +264,6 @@ if (5 < 10) {
 
         for m in matches.iter() {
             let token: Token = lexer.next().unwrap();
-            println!("{:#?}", token);
             assert_eq!(m.kind, token.kind);
         }
     }

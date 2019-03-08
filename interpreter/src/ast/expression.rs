@@ -1,5 +1,5 @@
 use std::fmt;
-use super::Node;
+use super::{Node, NodeKind};
 use super::identifier::Identifier;
 use super::int::IntegerLiteral;
 use super::prefix::Prefix;
@@ -79,6 +79,28 @@ impl Node for Expression {
             Expression::If(if_expression) => &if_expression.token_literal(),
             Expression::Function(function) => &function.token_literal(),
         }
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Expression(self)
+    }
+}
+
+impl Node for &Expression {
+    fn token_literal(&self) -> &str {
+        match self {
+            Expression::Ident(ident) => ident.token_literal(),
+            Expression::Int(int) => &int.token_literal(),
+            Expression::Bool(boolean) =>&boolean.token_literal(),
+            Expression::Prefix(prefix) => &prefix.token_literal(),
+            Expression::Infix(infix) => &infix.token_literal(),
+            Expression::If(if_expression) => &if_expression.token_literal(),
+            Expression::Function(function) => &function.token_literal(),
+        }
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Expression(self)
     }
 }
 

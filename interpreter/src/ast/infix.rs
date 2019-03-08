@@ -1,6 +1,6 @@
 use crate::token::Token;
 use super::expression::Expression;
-use super::Node;
+use super::{Node, NodeKind};
 
 #[derive(Debug)]
 pub struct Infix {
@@ -32,5 +32,9 @@ impl Eq for Infix {}
 impl Node for Infix {
     fn token_literal(&self) -> &str {
         &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Infix(self)
     }
 }

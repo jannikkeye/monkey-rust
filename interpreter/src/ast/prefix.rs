@@ -1,6 +1,6 @@
 use crate::token::Token;
 use super::expression::Expression;
-use super::Node;
+use super::{Node, NodeKind};
 
 #[derive(Debug, Eq)]
 pub struct Prefix {
@@ -28,5 +28,9 @@ impl PartialEq for Prefix {
 impl Node for Prefix {
     fn token_literal(&self) -> &str {
         &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Prefix(self)
     }
 }

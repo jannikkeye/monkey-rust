@@ -2,6 +2,7 @@ use std::fmt;
 use crate::token::{Token, TokenKind};
 use super::{
     Node,
+    NodeKind,
     identifier::Identifier,
     expression::Expression,
 };
@@ -88,6 +89,25 @@ impl Node for Statement {
             Statement::Expression(l) => &l.token.literal,
             Statement::Block(l) => &l.token.literal,
         }
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Statement(self)
+    }
+}
+
+impl Node for &Statement {
+    fn token_literal(&self) -> &str {
+        match self {
+            Statement::Let(l) => &l.token.literal,
+            Statement::Return(l) => &l.token.literal,
+            Statement::Expression(l) => &l.token.literal,
+            Statement::Block(l) => &l.token.literal,
+        }
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Statement(self)
     }
 }
 

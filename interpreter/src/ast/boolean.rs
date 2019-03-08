@@ -1,8 +1,7 @@
 use std::fmt;
 
-use super::Node;
+use super::{Node, NodeKind};
 use crate::token::Token;
-
 
 #[derive(Debug, Eq)]
 pub struct Boolean {
@@ -28,6 +27,20 @@ impl PartialEq for Boolean {
 impl Node for Boolean {
     fn token_literal(&self) -> &str {
         &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Boolean(self)
+    }
+}
+
+impl Node for &Boolean {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Boolean(self)
     }
 }
 

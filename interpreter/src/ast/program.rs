@@ -1,6 +1,7 @@
 use std::fmt;
 use super::{
     Node,
+    NodeKind,
     statement::Statement,
 };
 
@@ -23,6 +24,10 @@ impl Node for Program {
             true => self.statements[0].token_literal(),
             false => ""
         }
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Program(self)
     }
 }
 

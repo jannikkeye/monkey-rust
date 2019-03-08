@@ -1,5 +1,5 @@
 use crate::token::Token;
-use super::Node;
+use super::{Node, NodeKind};
 use super::expression::Expression;
 use super::statement::BlockStatement;
 use std::boxed::Box;
@@ -34,6 +34,10 @@ impl PartialEq for If {
 impl Node for If {
     fn token_literal(&self) -> &str {
         &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::If(self)
     }
 }
 
