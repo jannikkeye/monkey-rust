@@ -8,6 +8,7 @@ use crate::ast::{
     infix::Infix,
     boolean::Boolean,
     if_expression::If,
+    call::Call,
     function::FunctionLiteral,
 };
 use std::collections::HashMap;
@@ -63,6 +64,7 @@ impl<'a> Parser<'a> {
             (TokenKind::MINUS, Precedence::SUM),
             (TokenKind::SLASH, Precedence::PRODUCT),
             (TokenKind::ASTERIKS, Precedence::PRODUCT),
+            (TokenKind::LPAREN, Precedence::CALL),
         ];
 
         for p in precedences {
@@ -80,9 +82,24 @@ impl<'a> Parser<'a> {
         self.peek_token = self.lexer.next();
     }
 
+    fn parse_grouped_expression(&mut self) -> Option<Expression> {
+        println!("parse-grouped-expression");
+        self.next_token();
+
+        let expression = self.parse_expression(&Precedence::LOWEST);
+
+
+        if !self.expect_peek(TokenKind::RPAREN) {
+            return None;
+        }
+
+        expression
+    }
+
     fn parse_prefix(&mut self) -> Option<Expression> {
         if let Some(token) = &self.current_token {
             match token.kind {
+                TokenKind::LPAREN => return self.parse_grouped_expression(),
                 TokenKind::IF => return self.parse_if_expression(),
                 TokenKind::FUNCTION => return self.parse_function_literal(),
                 _ => {
@@ -167,7 +184,7 @@ impl<'a> Parser<'a> {
 
             self.next_token();
 
-            if_expression.condition = Box::new(self.parse_expression(&Precedence::LOWEST));
+            if_expression.condition = Some(Box::new(self.parse_expression(&Precedence::LOWEST).unwrap()));
 
             if !self.expect_peek(TokenKind::RPAREN) {
                 return None;
@@ -217,8 +234,59 @@ impl<'a> Parser<'a> {
         None
     }
 
+    fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
+        if let Some(token) = &self.current_token {
+            let mut expression = Call::new(token, Some(Box::new(function)));
+
+            if let Some(arguments) = self.parse_call_arguments() {
+                expression.arguments = arguments;
+            }
+
+            return Some(Expression::Call(expression));
+        }
+
+        None
+    }
+
+    fn parse_call_arguments(&mut self) -> Option<Vec<Option<Box<Expression>>>> {
+        let mut args = vec![];
+
+        if self.peek_token_is(TokenKind::RPAREN) {
+            self.next_token();
+
+            return Some(args);
+        }
+
+        self.next_token();
+
+        if let Some(expression) = self.parse_expression(&Precedence::LOWEST) {
+            args.push(Some(Box::new(expression)));
+        }
+
+        while self.peek_token_is(TokenKind::COMMA) {
+            self.next_token();
+            self.next_token();
+
+            if let Some(expression) = self.parse_expression(&Precedence::LOWEST) {
+                args.push(Some(Box::new(expression)));
+            }
+        }
+
+        if !self.expect_peek(TokenKind::RPAREN) {
+            return None;
+        }
+
+        Some(args)
+    }
+
     fn parse_infix(&mut self, left: Option<Expression>) -> Option<Expression> {
         if let Some(token) = self.current_token.clone() {
+            if token.kind == TokenKind::LPAREN {
+                if let Some(l) = left {
+                    return self.parse_call_expression(l);
+                }
+            }
+
             let mut infix = Infix::new(&token, left, &token.literal, None);
             let precedence = self.current_precedence();
             
@@ -305,6 +373,7 @@ impl<'a> Parser<'a> {
                 TokenKind::MINUS => true,
                 TokenKind::IF => true,
                 TokenKind::FUNCTION => true,
+                TokenKind::LPAREN => true,
                 _ => false
             };
         } else {
@@ -315,8 +384,9 @@ impl<'a> Parser<'a> {
     fn is_infix_expression(&self) -> bool {
         if let Some(token) = &self.current_token {
             if let Some(peek_token) = &self.peek_token {
-                if token.kind == TokenKind::IDENT || token.kind == TokenKind::INT || token.kind == TokenKind::TRUE || token.kind == TokenKind::FALSE {
+                if token.kind == TokenKind::IDENT || token.kind == TokenKind::INT || token.kind == TokenKind::TRUE || token.kind == TokenKind::FALSE || token.kind == TokenKind::RPAREN || token.kind == TokenKind::RBRACE {
                     return match peek_token.kind {
+                        TokenKind::LPAREN => true,
                         TokenKind::PLUS => true,
                         TokenKind::MINUS => true,
                         TokenKind::SLASH => true,
@@ -338,7 +408,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expression(&mut self, precendence: &Precedence) -> Option<Expression> {
         let mut left_expr;
-        
+
         if self.is_prefix_expression() {
             left_expr = self.parse_prefix();
         } else {
@@ -355,7 +425,6 @@ impl<'a> Parser<'a> {
 
             left_expr = self.parse_infix(left_expr);
         }
-
 
         left_expr
     }
@@ -471,13 +540,15 @@ impl<'a> Parser<'a> {
     fn peek_error(&mut self, kind: TokenKind) {
         let peek_token = self.peek_token.clone();
 
-        self.errors.push(
-            format!(
-                "expected next token to be {:?}, got {:?} instead",
-                kind,
-                peek_token.unwrap().kind,
-            )
-        )
+        let error = format!(
+            "expected next token to be {:?}, got {:?} instead",
+            kind,
+            peek_token.unwrap().kind,
+        );
+
+        println!("{}", error);
+
+        self.errors.push(error)
     }
 }
 
@@ -849,18 +920,22 @@ let nine = 9;
             Test { input: "-1 * 2 + 3", expected: "(((-1) * 2) + 3)" },
             Test { input: "3 > 5 == false", expected: "((3 > 5) == false)" },
             Test { input: "3 < 5 == true", expected: "((3 < 5) == true)" },
-            Test { input: "-3 * 5 != true / -100", expected: "(((-3) * 5) != (true / (-100)))"}
+            Test { input: "-3 * 5 != true / -100", expected: "(((-3) * 5) != (true / (-100)))"},
+            Test { input: "1 + (2 + 3) + 4", expected: "((1 + (2 + 3)) + 4)" },
+            Test { input: "(2 + 3) + 1", expected: "((2 + 3) + 1)" },
+            Test { input: "a + add(b * c) + d", expected: "((a + add((b * c))) + d)" },
         ];
 
         for test in tests.iter() {
             let lexer = Lexer::new(test.input);
             let mut parser = Parser::new(lexer);
-            let program = parser.parse_program();
-
-            if let Ok(p) = program {
-                assert_eq!(test.expected, p.to_string());
+            let program = parser.parse_program().expect("parsing failed");
+            println!("{:#?}", program);
+            for e in parser.errors.iter() {
+                println!("parse error: {}", e);
             }
 
+            assert_eq!(test.expected, program.to_string());
         }
     }
     
@@ -1058,6 +1133,44 @@ let nine = 9;
                         }
                     },
                     _ => panic!("not an if expression"),
+                }
+            },
+            _ => panic!("not an expression statement"),
+        }
+    }
+
+    #[test]
+    fn test_call_expression() {
+        let input = "add(1, 2 * 3, 4 + 5);";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().expect("parsing failed");
+
+        assert_eq!(program.statements.len(), 1);
+
+        match &program.statements[0] {
+            Statement::Expression(statement) => {
+                assert_eq!(statement.token.kind, TokenKind::IDENT);
+
+                match &statement.expression {
+                    Some(Expression::Call(call_expression)) => {
+                        assert_eq!(call_expression.token.kind, TokenKind::LPAREN);
+
+                        if let Some(Expression::Function(func)) = call_expression.function.as_ref().map(|b| b.as_ref()) {
+                            assert_eq!(func.token.kind, TokenKind::LPAREN);
+                            assert_eq!(func.token.literal, "add");
+                        }
+
+                        for arg in call_expression.arguments.iter() {
+                            if let Some(expression) = arg.as_ref().map(|b| b.as_ref()) {
+                                println!("{:?}", expression);
+                            }
+                        }
+
+                        assert_eq!(call_expression.arguments.len(), 3);
+                    },
+                    _ => panic!("not a call expression"),
                 }
             },
             _ => panic!("not an expression statement"),

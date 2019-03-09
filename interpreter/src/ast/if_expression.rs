@@ -8,7 +8,7 @@ use std::fmt;
 #[derive(Debug, Eq)]
 pub struct If {
     pub token: Token,
-    pub condition: Box<Option<Expression>>,
+    pub condition: Option<Box<Expression>>,
     pub consequence: Option<BlockStatement>,
     pub alternative: Option<BlockStatement>,
 }
@@ -17,7 +17,7 @@ impl If {
     pub fn new(token: &Token) -> Self {
         If {
             token: token.clone(),
-            condition: Box::new(None),
+            condition: None,
             consequence: None,
             alternative: None,
         }
@@ -47,7 +47,7 @@ impl fmt::Display for If {
 
         string.push_str("if");
 
-        if let Some(condition) = &*self.condition {
+        if let Some(condition) = self.condition.as_ref().map(|c| c.as_ref()) {
             string.push_str(&condition.to_string());
         }
 

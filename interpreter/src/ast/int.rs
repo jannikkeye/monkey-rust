@@ -4,12 +4,12 @@ use super::{Node, NodeKind};
 #[derive(Debug, Eq)]
 pub struct IntegerLiteral {
     pub token: Token,
-    pub value: u64,
+    pub value: i64,
 }
 
 impl IntegerLiteral {
     pub fn new(token: &Token, value: &str) -> Self {
-        let parsed_value = value.parse::<u64>().expect("failed to parse integer literal");
+        let parsed_value = value.parse::<i64>().expect("failed to parse integer literal");
 
         IntegerLiteral {
             token: token.clone(),

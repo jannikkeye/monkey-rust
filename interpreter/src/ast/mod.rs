@@ -8,7 +8,9 @@ pub mod infix;
 pub mod boolean;
 pub mod if_expression;
 pub mod function;
+pub mod call;
 
+#[derive(Debug)]
 pub enum NodeKind<'a> {
     Expression(&'a expression::Expression),
     Identifier(&'a identifier::Identifier),
@@ -20,6 +22,8 @@ pub enum NodeKind<'a> {
     Boolean(&'a boolean::Boolean),
     If(&'a if_expression::If),
     Function(&'a function::FunctionLiteral),
+    Call(&'a call::Call),
+    Block(&'a statement::BlockStatement),
 }
 
 pub trait Node {

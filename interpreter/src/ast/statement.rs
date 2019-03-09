@@ -81,6 +81,16 @@ impl LetStatement {
     }
 }
 
+impl Node for &BlockStatement {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Block(self)
+    }
+}
+
 impl Node for Statement {
     fn token_literal(&self) -> &str {
         match self {

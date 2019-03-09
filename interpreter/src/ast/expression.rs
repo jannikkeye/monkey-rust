@@ -7,6 +7,7 @@ use super::infix::Infix;
 use super::boolean::Boolean;
 use super::if_expression::If;
 use super::function::FunctionLiteral;
+use super::call::Call;
 
 #[derive(Debug, Eq)]
 pub enum Expression {
@@ -17,6 +18,7 @@ pub enum Expression {
     Infix(Infix),
     If(If),
     Function(FunctionLiteral),
+    Call(Call),
 }
 
 impl PartialEq for Expression {
@@ -63,6 +65,12 @@ impl PartialEq for Expression {
                     Expression::Function(other_function) => function == other_function,
                     _ => false,
                 }
+            },
+            Expression::Call(call) => {
+                match other {
+                    Expression::Call(other_call) => call == other_call,
+                    _ => false,
+                }
             }
         }
     }
@@ -78,6 +86,7 @@ impl Node for Expression {
             Expression::Infix(infix) => &infix.token_literal(),
             Expression::If(if_expression) => &if_expression.token_literal(),
             Expression::Function(function) => &function.token_literal(),
+            Expression::Call(call) => &call.token_literal(),
         }
     }
 
@@ -96,6 +105,7 @@ impl Node for &Expression {
             Expression::Infix(infix) => &infix.token_literal(),
             Expression::If(if_expression) => &if_expression.token_literal(),
             Expression::Function(function) => &function.token_literal(),
+            Expression::Call(call) =>  &call.token_literal(),
         }
     }
 
@@ -134,6 +144,7 @@ impl fmt::Display for Expression {
             ),
             Expression::If(if_expression) => write!(f, "{}", if_expression.to_string()),
             Expression::Function(function) => write!(f, "{}", function.to_string()),
+            Expression::Call(call) => write!(f, "{}", call.to_string()),
         }
     }
 }

@@ -38,7 +38,7 @@ impl ObjectVariant for Object {
 
 #[derive(Debug)]
 pub struct Integer {
-    pub value: u64,
+    pub value: i64,
 }
 
 impl ObjectVariant for Integer {
@@ -51,7 +51,7 @@ impl ObjectVariant for Integer {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Boolean {
     pub value: bool,
 }
@@ -66,7 +66,7 @@ impl ObjectVariant for Boolean {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Null {}
 
 impl ObjectVariant for Null {

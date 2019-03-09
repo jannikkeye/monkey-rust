@@ -37,7 +37,5 @@ pub fn start() {
             println!("{}", eval.inspect());
             println!("\n");
         }
-        
-
     }
 }
