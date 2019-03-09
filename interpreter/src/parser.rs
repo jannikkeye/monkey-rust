@@ -306,7 +306,12 @@ impl<'a> Parser<'a> {
         
         while let Some(token) = &self.current_token {
             if token.kind != TokenKind::EOF {
+                if token.kind == TokenKind::SEMICOLON {
+                    self.next_token();
+                }
+
                 let statement = self.parse_statement();
+
 
                 match statement {
                     Some(statement) => program.statements.push(statement),

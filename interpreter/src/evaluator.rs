@@ -1,12 +1,12 @@
 use crate::ast::{
     Node,
     NodeKind,
-    statement::Statement,
+    statement::{Statement, ReturnStatement},
     expression::Expression,
 
 };
 use crate::ast::{int, boolean, if_expression};
-use crate::object::{Object, Integer, TRUE, FALSE, NULL};
+use crate::object::{Object, Integer, ReturnValue, TRUE, FALSE, NULL};
 
 fn eval_integer(integer_literal: &int::IntegerLiteral) -> Object {
     Object::Integer(Integer { value: integer_literal.value })
@@ -23,9 +23,16 @@ fn eval_boolean(boolean: &boolean::Boolean) -> Object {
 fn eval_statements(statements: &[Statement]) -> Option<Object> {
     let mut result = None;
 
-    statements.iter().for_each(|statement| {
-        result = eval(statement)
-    });
+    println!("{:?}", statements);
+
+    for statement in statements {
+        println!("{:?}", statement);
+        result = eval(statement);
+
+        if let Some(Object::ReturnValue(return_value)) = result {
+            return Some(return_value.value);
+        }
+    };
 
     result
 }
@@ -114,6 +121,16 @@ fn is_thruthy(object: Object) -> bool {
     }
 }
 
+fn eval_return_statement(return_statement: &ReturnStatement) -> Option<Object> {
+    if let Some(return_value) = &return_statement.return_value {
+        let value = eval(return_value).unwrap();
+
+        return Some(Object::ReturnValue(Box::new(ReturnValue { value })))
+    }
+
+    None
+}
+
 pub fn eval(node: impl Node) -> Option<Object> {
     match node.kind() {
         NodeKind::Program(program) => eval_statements(&program.statements),
@@ -126,6 +143,7 @@ pub fn eval(node: impl Node) -> Option<Object> {
 
                     None
                 },
+                Statement::Return(return_statement) => eval_return_statement(return_statement),
                 Statement::Block(block_statement) => eval_statements(&block_statement.statements),
                 _ => None,
             }
@@ -175,7 +193,7 @@ mod tests {
     fn test_eval(input: &str) -> Option<Object> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-         
+
          if let Ok(program) = parser.parse_program() {
              return evaluator::eval(program);
          } else {
@@ -307,6 +325,29 @@ mod tests {
             Test { input: "if (1 > 2) { 10 }", expected: None },
             Test { input: "if (1 > 2) { 10 } else { 20 }", expected: Some(20) },
             Test { input: "if (1 < 2) { 10 } else { 20 }", expected: Some(10) },
+        ];
+
+        for test in tests.iter() {
+            let evaluated = test_eval(test.input).unwrap();
+
+            if let Object::Integer(integer) = evaluated {
+                assert!(test_integer_object(integer, test.expected));
+            }
+        }
+    }
+
+    #[test]
+    fn test_return_statements() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: Option<i64>,
+        }
+
+        let tests = vec![
+            Test { input: "return 10", expected: Some(10) },
+            Test { input: "return 10; 9;", expected: Some(10) },
+            Test { input: "return 2 * 5; 9;", expected: Some(10) },
+            Test { input: "9; return 2 * 5; 9;", expected: Some(10) },
         ];
 
         for test in tests.iter() {
