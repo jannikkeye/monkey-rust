@@ -2,6 +2,7 @@ pub const INTEGER_OBJ: &str = "INTEGER";
 pub const BOOLEAN_OBJ: &str = "BOOLEAN";
 pub const NULL_OBJ: &str = "NULL";
 pub const RETURN_VALUE_OBJ: &str = "RETURN_VALUE";
+pub const ERROR_OBJ: &str = "ERROR";
 
 pub const TRUE: Boolean = Boolean { value: true };
 pub const FALSE: Boolean = Boolean { value: false };
@@ -13,6 +14,7 @@ pub enum Object {
     Boolean(Boolean),
     Null(Null),
     ReturnValue(Box<ReturnValue>),
+    Error(Error),
 }
 
 pub trait ObjectVariant {
@@ -27,6 +29,7 @@ impl ObjectVariant for Object {
             Object::Boolean(boolean) => boolean.kind(),
             Object::Null(null) => null.kind(),
             Object::ReturnValue(r_v) => r_v.kind(),
+            Object::Error(error) => error.kind(),
         }
     }
 
@@ -36,7 +39,29 @@ impl ObjectVariant for Object {
             Object::Boolean(boolean) => boolean.inspect(),
             Object::Null(null) => null.inspect(),
             Object::ReturnValue(return_value) => return_value.inspect(),
+            Object::Error(error) => error.inspect(),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Error {
+    pub message: String,
+}
+
+impl Error {
+    pub fn new(message: String) -> Self {
+        Error { message }
+    }
+}
+
+impl ObjectVariant for Error {
+    fn kind(&self) -> &str {
+        ERROR_OBJ
+    }
+
+    fn inspect(&self) -> String {
+        self.message.to_owned()
     }
 }
 

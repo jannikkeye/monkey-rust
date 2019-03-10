@@ -6,7 +6,7 @@ use crate::ast::{
 
 };
 use crate::ast::{int, boolean, if_expression};
-use crate::object::{Object, Integer, ReturnValue, TRUE, FALSE, NULL};
+use crate::object::{Error, Object, ObjectVariant, Integer, ReturnValue, TRUE, FALSE, NULL};
 
 fn eval_integer(integer_literal: &int::IntegerLiteral) -> Object {
     Object::Integer(Integer { value: integer_literal.value })
@@ -23,14 +23,13 @@ fn eval_boolean(boolean: &boolean::Boolean) -> Object {
 fn eval_statements(statements: &[Statement]) -> Option<Object> {
     let mut result = None;
 
-    println!("{:?}", statements);
-
     for statement in statements {
-        println!("{:?}", statement);
         result = eval(statement);
 
-        if let Some(Object::ReturnValue(return_value)) = result {
-            return Some(return_value.value);
+        match result {
+            Some(Object::ReturnValue(return_value)) => return Some(return_value.value),
+            Some(Object::Error(error)) => return Some(Object::Error(error)),
+            _ => {},
         }
     };
 
@@ -41,7 +40,7 @@ fn eval_prefix_expression(operator: &str, right: Object) -> Object {
     match operator {
         "!" => eval_bang_operator_expression(right),
         "-" => eval_minus_prexif_operator_expression(right),
-        _ => Object::Null(NULL),
+        _ => Object::Error(Error::new(format!("unkown operator: {}{}", operator, right.inspect()))),
     }
 }
 
@@ -67,21 +66,20 @@ fn native_boolean_to_boolean_object(value: bool) -> Object {
 fn eval_minus_prexif_operator_expression(right: Object) -> Object {
     match right {
         Object::Integer(integer_object) => Object::Integer(Integer { value: -integer_object.value }),
-        _ => Object::Null(NULL),
+        _ => Object::Error(Error::new(format!("unknown operator: -{}", right.kind()))),
     }
 }
 
 fn eval_infix_expression(operator: &str, left: Object, right: Object) -> Object {
-    if let Object::Integer(l) = left {
-        if let Object::Integer(r) = right {
-            return eval_integer_infix_expression(operator, l, r);
-        }
+    match (&left, &right) {
+        (Object::Integer(l), Object::Integer(r)) => eval_integer_infix_expression(operator, l, r),
+        (Object::Integer(l), Object::Boolean(r)) => Object::Error(Error::new(format!("type mismatch: {} {} {}", l.kind(), operator, r.kind()))),
+        (Object::Boolean(l), Object::Integer(r)) => Object::Error(Error::new(format!("type mismatch: {} {} {}", l.kind(), operator, r.kind()))),
+        (_, _) => Object::Error(Error::new(format!("unknown operator: {} {} {}", left.kind(), operator, right.kind())))
     }
-
-    Object::Null(NULL)
 }
 
-fn eval_integer_infix_expression(operator: &str, left: Integer, right: Integer) -> Object {
+fn eval_integer_infix_expression(operator: &str, left: &Integer, right: &Integer) -> Object {
     let left_val = left.value;
     let right_val = right.value;
 
@@ -94,7 +92,7 @@ fn eval_integer_infix_expression(operator: &str, left: Integer, right: Integer) 
         ">" => native_boolean_to_boolean_object(left_val > right_val),
         "==" => native_boolean_to_boolean_object(left_val == right_val),
         "!=" => native_boolean_to_boolean_object(left_val != right_val),
-        _ => Object::Null(NULL),
+        _ => Object::Error(Error::new(format!("unkown operator: {} {} {}", left.kind(), operator, right.kind()))),
     }
 }
 
@@ -103,6 +101,10 @@ fn eval_if_expression(if_expression: &if_expression::If) -> Option<Object> {
     let consequence = if_expression.consequence.as_ref().unwrap();
     let alternative = if_expression.alternative.as_ref();
     let eval_condition = eval(condition).unwrap();
+
+    if let Object::Error(error) = eval_condition {
+        return Some(Object::Error(error));
+    }
 
     if is_thruthy(eval_condition) {
         return  eval(consequence);
@@ -124,6 +126,10 @@ fn is_thruthy(object: Object) -> bool {
 fn eval_return_statement(return_statement: &ReturnStatement) -> Option<Object> {
     if let Some(return_value) = &return_statement.return_value {
         let value = eval(return_value).unwrap();
+
+        if let Object::Error(error) = value {
+            return Some(Object::Error(error));
+        }
 
         return Some(Object::ReturnValue(Box::new(ReturnValue { value })))
     }
@@ -156,6 +162,10 @@ pub fn eval(node: impl Node) -> Option<Object> {
                 if let Some(right) = &*prefix_expression.right {
                     let eval_right = eval(right);
 
+                    if let Some(Object::Error(error)) = eval_right {
+                        return Some(Object::Error(error));
+                    }
+
                     return Some(eval_prefix_expression(prefix_expression.operator.as_ref(), eval_right.unwrap()));
                 }
 
@@ -166,7 +176,16 @@ pub fn eval(node: impl Node) -> Option<Object> {
                 if let Some(left) = &*infix_expression.left {
                     if let Some(right) = &*infix_expression.right {
                         let eval_left = eval(left).unwrap();
+
+                        if let Object::Error(error) = eval_left {
+                            return Some(Object::Error(error));
+                        }
+
                         let eval_right = eval(right).unwrap();
+
+                        if let Object::Error(error) = eval_right {
+                            return Some(Object::Error(error));
+                        }
 
                         return Some(eval_infix_expression(infix_expression.operator.as_ref(), eval_left, eval_right));
                     }
@@ -337,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn test_return_statements() {
+    fn test_eval_return_statements() {
         struct Test<'a> {
             input: &'a str,
             expected: Option<i64>,
@@ -348,6 +367,20 @@ mod tests {
             Test { input: "return 10; 9;", expected: Some(10) },
             Test { input: "return 2 * 5; 9;", expected: Some(10) },
             Test { input: "9; return 2 * 5; 9;", expected: Some(10) },
+            Test { input: "
+if (true) {
+    if (5 == 5) {
+        if (true) {
+            return 10;
+        }
+       return 10;
+    }
+
+    return 1;
+}
+
+return 11;
+", expected: Some(10) },
         ];
 
         for test in tests.iter() {
@@ -355,6 +388,44 @@ mod tests {
 
             if let Object::Integer(integer) = evaluated {
                 assert!(test_integer_object(integer, test.expected));
+            }
+        }
+    }
+    
+    #[test]
+    fn test_error_handling() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: &'a str,
+        }
+
+        let tests = vec![
+            Test { input: "5 + true", expected: "type mismatch: INTEGER + BOOLEAN" },
+            Test { input: "5 + true; 5;", expected: "type mismatch: INTEGER + BOOLEAN" },
+            Test { input: "-true", expected: "unknown operator: -BOOLEAN" },
+            Test { input: "true + false;", expected: "unknown operator: BOOLEAN + BOOLEAN" },
+            Test { input: "5; true + false; 5", expected: "unknown operator: BOOLEAN + BOOLEAN" },
+            Test { input: "if (10 > 1) { true + false }", expected: "unknown operator: BOOLEAN + BOOLEAN" },
+            Test { input: "
+if (10 > 1) {
+    if (10 > 1) {
+       return true + false;
+    }
+
+    return 1;
+}
+
+return 11;
+", expected: "unknown operator: BOOLEAN + BOOLEAN" },
+        ];
+
+        for test in tests.iter() {
+            let evaluated = test_eval(test.input).unwrap();
+
+            if let Object::Error(error) = evaluated {
+                assert_eq!(error.message, test.expected);
+            } else {
+                panic!("not an error message: {:?}", evaluated.kind());
             }
         }
     }

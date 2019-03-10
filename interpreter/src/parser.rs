@@ -83,7 +83,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_grouped_expression(&mut self) -> Option<Expression> {
-        println!("parse-grouped-expression");
         self.next_token();
 
         let expression = self.parse_expression(&Precedence::LOWEST);
@@ -216,9 +215,10 @@ impl<'a> Parser<'a> {
         if let Some(token) = &self.current_token {
             let mut block = BlockStatement::new(&token);
 
+
             self.next_token();
 
-            while !self.current_token_is(TokenKind::RBRACE) && !self.current_token_is(TokenKind::EOF) {
+            while self.current_token.is_some() && !self.current_token_is(TokenKind::RBRACE) && !self.current_token_is(TokenKind::EOF) {
                 let statement = self.parse_statement();
 
                 if let Some(s) = statement {
@@ -312,7 +312,6 @@ impl<'a> Parser<'a> {
 
                 let statement = self.parse_statement();
 
-
                 match statement {
                     Some(statement) => program.statements.push(statement),
                     None => self.next_token(),
@@ -364,6 +363,7 @@ impl<'a> Parser<'a> {
             if self.peek_token_is(TokenKind::EOF) {
                 self.next_token();
             }
+
 
             return Some(Statement::Expression(statement));
         }
@@ -935,7 +935,6 @@ let nine = 9;
             let lexer = Lexer::new(test.input);
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program().expect("parsing failed");
-            println!("{:#?}", program);
             for e in parser.errors.iter() {
                 println!("parse error: {}", e);
             }
@@ -987,8 +986,6 @@ let nine = 9;
         let program = parser.parse_program().expect("failed to parse program");
 
         assert_eq!(program.statements.len(), 1);
-
-        println!("{:#?}", program);
 
         match &program.statements[0] {
             Statement::Expression(statement) => {

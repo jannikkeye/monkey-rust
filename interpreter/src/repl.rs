@@ -1,7 +1,7 @@
 use crate::lexer;
 use crate::parser;
 use crate::evaluator;
-use crate::object::ObjectVariant;
+use crate::object::{Object, ObjectVariant};
 use std::io::{Write, stdin, stdout};
 
 const PROMPT: &str = ">>";
@@ -34,6 +34,12 @@ pub fn start() {
         let evaluated = evaluator::eval(program);
 
         if let Some(eval) = evaluated {
+            if let Object::Error(_) = &eval {
+                println!("Whoops! We ran into some monkey business here!");
+                println!("evaluation error:");
+            }
+
+
             println!("{}", eval.inspect());
             println!("\n");
         }
