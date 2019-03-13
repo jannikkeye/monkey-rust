@@ -31,7 +31,9 @@ pub fn start() {
             continue;
         }
 
-        let evaluated = evaluator::eval(program);
+        let mut evaluator = evaluator::Evaluator::new();
+
+        let evaluated = evaluator.eval(program);
 
         if let Some(eval) = evaluated {
             if let Object::Error(_) = &eval {

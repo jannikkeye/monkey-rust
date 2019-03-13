@@ -3,218 +3,263 @@ use crate::ast::{
     NodeKind,
     statement::{Statement, ReturnStatement},
     expression::Expression,
-
+    identifier::Identifier,
 };
 use crate::ast::{int, boolean, if_expression};
 use crate::object::{Error, Object, ObjectVariant, Integer, ReturnValue, TRUE, FALSE, NULL};
+use crate::environment::Environment;
 
-fn eval_integer(integer_literal: &int::IntegerLiteral) -> Object {
-    Object::Integer(Integer { value: integer_literal.value })
+pub struct Evaluator {
+    environment: Environment,
 }
 
-fn eval_boolean(boolean: &boolean::Boolean) -> Object {
-    if boolean.value {
-        return Object::Boolean(TRUE);
-    } else {
-        return Object::Boolean(FALSE);
-    }
-}
-
-fn eval_statements(statements: &[Statement]) -> Option<Object> {
-    let mut result = None;
-
-    for statement in statements {
-        result = eval(statement);
-
-        match result {
-            Some(Object::ReturnValue(return_value)) => return Some(return_value.value),
-            Some(Object::Error(error)) => return Some(Object::Error(error)),
-            _ => {},
+impl Evaluator {
+    pub fn new() -> Self {
+        Evaluator {
+            environment: Environment::new(),
         }
-    };
-
-    result
-}
-
-fn eval_prefix_expression(operator: &str, right: Object) -> Object {
-    match operator {
-        "!" => eval_bang_operator_expression(right),
-        "-" => eval_minus_prexif_operator_expression(right),
-        _ => Object::Error(Error::new(format!("unkown operator: {}{}", operator, right.inspect()))),
-    }
-}
-
-fn eval_bang_operator_expression(right: Object) -> Object {
-    match right {
-        Object::Boolean(boolean) => match boolean {
-            TRUE => Object::Boolean(FALSE),
-            FALSE => Object::Boolean(TRUE),
-        },
-        Object::Null(_) => Object::Boolean(TRUE),
-        _ => Object::Boolean(FALSE),
-    }
-}
-
-fn native_boolean_to_boolean_object(value: bool) -> Object {
-    if value {
-        return Object::Boolean(TRUE);
-    } else {
-        return Object::Boolean(FALSE);
-    }
-}
-
-fn eval_minus_prexif_operator_expression(right: Object) -> Object {
-    match right {
-        Object::Integer(integer_object) => Object::Integer(Integer { value: -integer_object.value }),
-        _ => Object::Error(Error::new(format!("unknown operator: -{}", right.kind()))),
-    }
-}
-
-fn eval_infix_expression(operator: &str, left: Object, right: Object) -> Object {
-    match (&left, &right) {
-        (Object::Integer(l), Object::Integer(r)) => eval_integer_infix_expression(operator, l, r),
-        (Object::Integer(l), Object::Boolean(r)) => Object::Error(Error::new(format!("type mismatch: {} {} {}", l.kind(), operator, r.kind()))),
-        (Object::Boolean(l), Object::Integer(r)) => Object::Error(Error::new(format!("type mismatch: {} {} {}", l.kind(), operator, r.kind()))),
-        (_, _) => Object::Error(Error::new(format!("unknown operator: {} {} {}", left.kind(), operator, right.kind())))
-    }
-}
-
-fn eval_integer_infix_expression(operator: &str, left: &Integer, right: &Integer) -> Object {
-    let left_val = left.value;
-    let right_val = right.value;
-
-    match operator {
-        "+" => Object::Integer(Integer { value: left_val + right_val }),
-        "-" => Object::Integer(Integer { value: left_val - right_val }),
-        "*" => Object::Integer(Integer { value: left_val * right_val }),
-        "/" => Object::Integer(Integer { value: left_val / right_val }),
-        "<" => native_boolean_to_boolean_object(left_val < right_val),
-        ">" => native_boolean_to_boolean_object(left_val > right_val),
-        "==" => native_boolean_to_boolean_object(left_val == right_val),
-        "!=" => native_boolean_to_boolean_object(left_val != right_val),
-        _ => Object::Error(Error::new(format!("unkown operator: {} {} {}", left.kind(), operator, right.kind()))),
-    }
-}
-
-fn eval_if_expression(if_expression: &if_expression::If) -> Option<Object> {
-    let condition = if_expression.condition.as_ref().map(|c| c.as_ref()).unwrap();
-    let consequence = if_expression.consequence.as_ref().unwrap();
-    let alternative = if_expression.alternative.as_ref();
-    let eval_condition = eval(condition).unwrap();
-
-    if let Object::Error(error) = eval_condition {
-        return Some(Object::Error(error));
     }
 
-    if is_thruthy(eval_condition) {
-        return  eval(consequence);
-    } else if if_expression.alternative.is_some() {
-        return eval(alternative.unwrap());
+    fn eval_integer(&self, integer_literal: &int::IntegerLiteral) -> Object {
+        Object::Integer(Integer { value: integer_literal.value })
     }
 
-    Some(Object::Null(NULL))
-}
-
-fn is_thruthy(object: Object) -> bool {
-    match object {
-        Object::Null(_) => false,
-        Object::Boolean(value) => value.value,
-        _ => true,
+    fn eval_boolean(&self, boolean: &boolean::Boolean) -> Object {
+        if boolean.value {
+            return Object::Boolean(TRUE);
+        } else {
+            return Object::Boolean(FALSE);
+        }
     }
-}
 
-fn eval_return_statement(return_statement: &ReturnStatement) -> Option<Object> {
-    if let Some(return_value) = &return_statement.return_value {
-        let value = eval(return_value).unwrap();
+    fn eval_statements(&mut self, statements: &[Statement]) -> Option<Object> {
+        let mut result = None;
 
-        if let Object::Error(error) = value {
+        for statement in statements {
+            result = self.eval(statement);
+
+            match result {
+                Some(Object::ReturnValue(return_value)) => return Some(return_value.value),
+                Some(Object::Error(error)) => return Some(Object::Error(error)),
+                _ => {},
+            }
+        };
+
+        result
+    }
+
+    fn eval_prefix_expression(&self, operator: &str, right: Object) -> Object {
+        match operator {
+            "!" => self.eval_bang_operator_expression(right),
+            "-" => self.eval_minus_prexif_operator_expression(right),
+            _ => Object::Error(Error::new(format!("unkown operator: {}{}", operator, right.inspect()))),
+        }
+    }
+
+    fn eval_bang_operator_expression(&self, right: Object) -> Object {
+        match right {
+            Object::Boolean(boolean) => match boolean {
+                TRUE => Object::Boolean(FALSE),
+                FALSE => Object::Boolean(TRUE),
+            },
+            Object::Null(_) => Object::Boolean(TRUE),
+            _ => Object::Boolean(FALSE),
+        }
+    }
+
+    fn native_boolean_to_boolean_object(&self, value: bool) -> Object {
+        if value {
+            return Object::Boolean(TRUE);
+        } else {
+            return Object::Boolean(FALSE);
+        }
+    }
+
+    fn eval_minus_prexif_operator_expression(&self, right: Object) -> Object {
+        match right {
+            Object::Integer(integer_object) => Object::Integer(Integer { value: -integer_object.value }),
+            _ => Object::Error(Error::new(format!("unknown operator: -{}", right.kind()))),
+        }
+    }
+
+    fn eval_infix_expression(&self, operator: &str, left: Object, right: Object) -> Object {
+        match (&left, &right) {
+            (Object::Integer(l), Object::Integer(r)) => self.eval_integer_infix_expression(operator, l, r),
+            (Object::Integer(l), Object::Boolean(r)) => Object::Error(Error::new(format!("type mismatch: {} {} {}", l.kind(), operator, r.kind()))),
+            (Object::Boolean(l), Object::Integer(r)) => Object::Error(Error::new(format!("type mismatch: {} {} {}", l.kind(), operator, r.kind()))),
+            (_, _) => Object::Error(Error::new(format!("unknown operator: {} {} {}", left.kind(), operator, right.kind())))
+        }
+    }
+
+    fn eval_integer_infix_expression(&self, operator: &str, left: &Integer, right: &Integer) -> Object {
+        let left_val = left.value;
+        let right_val = right.value;
+
+        match operator {
+            "+" => Object::Integer(Integer { value: left_val + right_val }),
+            "-" => Object::Integer(Integer { value: left_val - right_val }),
+            "*" => Object::Integer(Integer { value: left_val * right_val }),
+            "/" => Object::Integer(Integer { value: left_val / right_val }),
+            "<" => self.native_boolean_to_boolean_object(left_val < right_val),
+            ">" => self.native_boolean_to_boolean_object(left_val > right_val),
+            "==" => self.native_boolean_to_boolean_object(left_val == right_val),
+            "!=" => self.native_boolean_to_boolean_object(left_val != right_val),
+            _ => Object::Error(Error::new(format!("unkown operator: {} {} {}", left.kind(), operator, right.kind()))),
+        }
+    }
+
+    fn eval_if_expression(&mut self, if_expression: &if_expression::If) -> Option<Object> {
+        let condition = if_expression.condition.as_ref().map(|c| c.as_ref()).unwrap();
+        let consequence = if_expression.consequence.as_ref().unwrap();
+        let alternative = if_expression.alternative.as_ref();
+        let eval_condition = self.eval(condition).unwrap();
+
+        if let Object::Error(error) = eval_condition {
             return Some(Object::Error(error));
         }
 
-        return Some(Object::ReturnValue(Box::new(ReturnValue { value })))
+        if self.is_thruthy(eval_condition) {
+            return  self.eval(consequence);
+        } else if if_expression.alternative.is_some() {
+            return self.eval(alternative.unwrap());
+        }
+
+        Some(Object::Null(NULL))
     }
 
-    None
-}
+    fn is_thruthy(&self, object: Object) -> bool {
+        match object {
+            Object::Null(_) => false,
+            Object::Boolean(value) => value.value,
+            _ => true,
+        }
+    }
 
-pub fn eval(node: impl Node) -> Option<Object> {
-    match node.kind() {
-        NodeKind::Program(program) => eval_statements(&program.statements),
-        NodeKind::Statement(statement) => {
-            match &statement {
-                Statement::Expression(expression_statement) => {
-                    if let Some(expression) = &expression_statement.expression {
-                        return eval(expression);
+    fn eval_return_statement(&mut self, return_statement: &ReturnStatement) -> Option<Object> {
+        if let Some(return_value) = &return_statement.return_value {
+            let value = self.eval(return_value).unwrap();
+
+            if let Object::Error(error) = value {
+                return Some(Object::Error(error));
+            }
+
+            return Some(Object::ReturnValue(Box::new(ReturnValue { value })))
+        }
+
+        None
+    }
+
+    fn eval_identifier(&self, identifier: &Identifier) -> Option<Object> {
+        let value = self.environment.get(&identifier.value);
+
+        if value.is_none() {
+            return Some(Object::Error(Error::new(format!("identifier not found: {}", identifier.value))));
+        }
+
+        value
+    }
+
+    pub fn eval(&mut self, node: impl Node) -> Option<Object> {
+        match node.kind() {
+            NodeKind::Program(program) => self.eval_statements(&program.statements),
+            NodeKind::Statement(statement) => {
+                match &statement {
+                    Statement::Expression(expression_statement) => {
+                        if let Some(expression) = &expression_statement.expression {
+                            return self.eval(expression);
+                        }
+
+                        None
+                    },
+                    Statement::Return(return_statement) => self.eval_return_statement(return_statement),
+                    Statement::Block(block_statement) => self.eval_statements(&block_statement.statements),
+                    Statement::Let(let_statement) => {
+                        if let Some(expression) = &let_statement.value {
+                            let value = self.eval(expression);
+
+                            return match &value {
+                                Some(Object::Error(_)) => value,
+                                None => None,
+                                Some(v) => {
+                                    if let Some(identifier) = &let_statement.name {
+                                        self.environment.set(&identifier.value, &v);
+                                    }
+
+                                    value
+                                }
+                            }
+                        }
+
+                        None
+                    }
+                }
+            },
+            NodeKind::Block(block) => self.eval_statements(&block.statements),
+            NodeKind::Expression(expression) => match expression {
+                Expression::Int(integer_expression) => self.eval(integer_expression),
+                Expression::Bool(boolean_expression) => self.eval(boolean_expression),
+                Expression::Prefix(prefix_expression) => {
+                    if let Some(right) = &*prefix_expression.right {
+                        let eval_right = self.eval(right);
+
+                        if let Some(Object::Error(error)) = eval_right {
+                            return Some(Object::Error(error));
+                        }
+
+                        return Some(self.eval_prefix_expression(prefix_expression.operator.as_ref(), eval_right.unwrap()));
+                    }
+
+                    None
+
+                },
+                Expression::Infix(infix_expression) => {
+                    if let Some(left) = &*infix_expression.left {
+                        if let Some(right) = &*infix_expression.right {
+                            let eval_left = self.eval(left).unwrap();
+
+                            if let Object::Error(error) = eval_left {
+                                return Some(Object::Error(error));
+                            }
+
+                            let eval_right = self.eval(right).unwrap();
+
+                            if let Object::Error(error) = eval_right {
+                                return Some(Object::Error(error));
+                            }
+
+                            return Some(self.eval_infix_expression(infix_expression.operator.as_ref(), eval_left, eval_right));
+                        }
                     }
 
                     None
                 },
-                Statement::Return(return_statement) => eval_return_statement(return_statement),
-                Statement::Block(block_statement) => eval_statements(&block_statement.statements),
+                Expression::If(if_expression) => self.eval_if_expression(if_expression),
+                Expression::Ident(identifier) => self.eval_identifier(identifier),
                 _ => None,
-            }
-        },
-        NodeKind::Block(block) => eval_statements(&block.statements),
-        NodeKind::Expression(expression) => match expression {
-            Expression::Int(integer_expression) => eval(integer_expression),
-            Expression::Bool(boolean_expression) => eval(boolean_expression),
-            Expression::Prefix(prefix_expression) => {
-                if let Some(right) = &*prefix_expression.right {
-                    let eval_right = eval(right);
-
-                    if let Some(Object::Error(error)) = eval_right {
-                        return Some(Object::Error(error));
-                    }
-
-                    return Some(eval_prefix_expression(prefix_expression.operator.as_ref(), eval_right.unwrap()));
-                }
-
-                None
-
             },
-            Expression::Infix(infix_expression) => {
-                if let Some(left) = &*infix_expression.left {
-                    if let Some(right) = &*infix_expression.right {
-                        let eval_left = eval(left).unwrap();
-
-                        if let Object::Error(error) = eval_left {
-                            return Some(Object::Error(error));
-                        }
-
-                        let eval_right = eval(right).unwrap();
-
-                        if let Object::Error(error) = eval_right {
-                            return Some(Object::Error(error));
-                        }
-
-                        return Some(eval_infix_expression(infix_expression.operator.as_ref(), eval_left, eval_right));
-                    }
-                }
-
-                None
-            },
-            Expression::If(if_expression) => eval_if_expression(if_expression),
+            NodeKind::Integer(integer_literal) => Some(self.eval_integer(integer_literal)),
+            NodeKind::Boolean(boolean) => Some(self.eval_boolean(boolean)),
+            NodeKind::Identifier(identifier) => self.eval_identifier(identifier),
             _ => None,
-        },
-        NodeKind::Integer(integer_literal) => Some(eval_integer(integer_literal)),
-        NodeKind::Boolean(boolean) => Some(eval_boolean(boolean)),
-        _ => None,
+        }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
     use crate::object::{Object, ObjectVariant, Integer, INTEGER_OBJ, Boolean, BOOLEAN_OBJ, NULL_OBJ};
-    use crate::evaluator;
+    use crate::evaluator::Evaluator;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
 
     fn test_eval(input: &str) -> Option<Object> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
+        let mut evaluator =  Evaluator::new();
 
          if let Ok(program) = parser.parse_program() {
-             return evaluator::eval(program);
+             return evaluator.eval(program);
          } else {
              panic!("failed to parse program");
          }
@@ -388,6 +433,8 @@ return 11;
 
             if let Object::Integer(integer) = evaluated {
                 assert!(test_integer_object(integer, test.expected));
+            } else {
+                panic!("not an integer object: {}", evaluated.kind());
             }
         }
     }
@@ -417,6 +464,7 @@ if (10 > 1) {
 
 return 11;
 ", expected: "unknown operator: BOOLEAN + BOOLEAN" },
+            Test { input: "foobar", expected: "identifier not found: foobar" },
         ];
 
         for test in tests.iter() {
@@ -426,6 +474,31 @@ return 11;
                 assert_eq!(error.message, test.expected);
             } else {
                 panic!("not an error message: {:?}", evaluated.kind());
+            }
+        }
+    }
+
+    #[test]
+    fn test_eval_let_statements() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: i64,
+        }
+
+        let tests = vec![
+            Test { input: "let a = 5; a;", expected: 5 },
+            Test { input: "let a = 5 * 5; a;", expected: 25 },
+            Test { input: "let a = 5; let b = a; b;", expected: 5 },
+            Test { input: "let a = 5; let b = a; let c = a + b + 5; c;", expected: 15 },
+        ];
+
+        for test in tests.iter() {
+            let evaluated = test_eval(test.input).unwrap();
+
+            if let Object::Integer(int) = evaluated {
+                assert_eq!(int.value, test.expected);
+            } else {
+                panic!("not an integer object: {}", evaluated.kind());
             }
         }
     }

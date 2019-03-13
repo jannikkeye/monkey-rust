@@ -8,7 +8,7 @@ pub const TRUE: Boolean = Boolean { value: true };
 pub const FALSE: Boolean = Boolean { value: false };
 pub const NULL: Null = Null {};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Object {
     Integer(Integer),
     Boolean(Boolean),
@@ -44,7 +44,7 @@ impl ObjectVariant for Object {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Error {
     pub message: String,
 }
@@ -65,7 +65,7 @@ impl ObjectVariant for Error {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Integer {
     pub value: i64,
 }
@@ -80,7 +80,7 @@ impl ObjectVariant for Integer {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Boolean {
     pub value: bool,
 }
@@ -95,7 +95,7 @@ impl ObjectVariant for Boolean {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Null {}
 
 impl ObjectVariant for Null {
@@ -108,7 +108,7 @@ impl ObjectVariant for Null {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReturnValue {
     pub value: Object,
 }

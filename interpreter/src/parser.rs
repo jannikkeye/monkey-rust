@@ -564,39 +564,55 @@ mod tests {
     #[test]
     fn test_let_statements() {
         use crate::ast::{statement::Statement, Node};
-        let input = "
-let x =  5;
-let y = 10;
-let foobar = 838383;
-        ";
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
-
-        for e in parser.errors.iter() {
-            println!("parse error: {}", e);
+        struct Test<'a> {
+            input: &'a str,
+            name: &'a str,
+            value: i64,
         }
 
-        match program {
-            Err(error) => panic!(format!("{}", error)),
-            Ok(program) => {
-                assert_eq!(program.statements.len(), 3);
-                let tests: [(&str, &str); 3] = [
-                    ("x", "5"),
-                    ("y", "10"),
-                    ("foobar", "838383"),
-                ];
+        let tests = vec![
+            Test { input: "let x =  5;", name: "x", value: 5 },
+            Test { input: "let y =  10;", name: "y", value: 10 },
+            Test { input: "let foobar =  838383;", name: "foobar", value: 838383 },
+        ];
 
-                for (i, (name, value)) in tests.iter().enumerate() {
-                    let statement: &Statement = &program.statements[i];
+        for test in tests.iter() {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            for e in parser.errors.iter() {
+                println!("parse error: {}", e);
+            }
+
+            match program {
+                Err(error) => panic!(format!("{}", error)),
+                Ok(program) => {
+                    assert_eq!(program.statements.len(), 1);
+
+                    let statement: &Statement = &program.statements[0];
 
                     assert_eq!(statement.token_literal(), "let");
-                    // assert_eq!(statement.name, Some(Identifier::new()));
-                    // assert_eq!(&statement.value.unwrap().value, value);
+
+                    match &statement {
+                        Statement::Let(ls) => {
+                            match &ls.name {
+                                Some(identifier) => assert_eq!(identifier.value, test.name),
+                                None => panic!("not an identifier"),
+                            };
+
+                            match &ls.value {
+                                Some(Expression::Int(int)) => {
+                                    assert_eq!(int.value, test.value);
+                                },
+                                _ => panic!("not an integer expression"),
+                            }
+                        },
+                        _ => panic!("not a let statement"),
+                    }
                 }
             }
         }
-
     }
 
     #[test]
