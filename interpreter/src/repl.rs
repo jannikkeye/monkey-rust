@@ -10,6 +10,8 @@ pub fn start() {
     println!("
 
     ");
+    let mut evaluator = evaluator::Evaluator::new();
+
     loop {
         let mut input = String::new();
         print!("{}", PROMPT);
@@ -30,8 +32,6 @@ pub fn start() {
 
             continue;
         }
-
-        let mut evaluator = evaluator::Evaluator::new();
 
         let evaluated = evaluator.eval(program);
 
