@@ -1,7 +1,7 @@
-use crate::token::Token;
-use super::{Node, NodeKind};
 use super::expression::Expression;
 use super::statement::BlockStatement;
+use super::{Node, NodeKind};
+use crate::token::Token;
 use std::boxed::Box;
 use std::fmt;
 
@@ -24,10 +24,12 @@ impl If {
     }
 }
 
-
 impl PartialEq for If {
     fn eq(&self, other: &If) -> bool {
-        self.token == other.token && self.condition == other.condition && self.consequence == other.consequence && self.alternative == other.alternative
+        self.token == other.token
+            && self.condition == other.condition
+            && self.consequence == other.consequence
+            && self.alternative == other.alternative
     }
 }
 

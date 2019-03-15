@@ -1,14 +1,14 @@
-pub mod expression;
-pub mod identifier;
-pub mod program;
-pub mod int;
-pub mod statement;
-pub mod prefix;
-pub mod infix;
 pub mod boolean;
-pub mod if_expression;
-pub mod function;
 pub mod call;
+pub mod expression;
+pub mod function;
+pub mod identifier;
+pub mod if_expression;
+pub mod infix;
+pub mod int;
+pub mod prefix;
+pub mod program;
+pub mod statement;
 
 #[derive(Debug)]
 pub enum NodeKind<'a> {

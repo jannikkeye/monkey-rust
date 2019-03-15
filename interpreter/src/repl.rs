@@ -1,15 +1,17 @@
-use crate::lexer;
-use crate::parser;
 use crate::evaluator;
+use crate::lexer;
 use crate::object::{Object, ObjectVariant};
-use std::io::{Write, stdin, stdout};
+use crate::parser;
+use std::io::{stdin, stdout, Write};
 
-const PROMPT: &str = ">>";
+const PROMPT: &str = ">> ";
 
 pub fn start() {
-    println!("
+    println!(
+        "
 
-    ");
+    "
+    );
     let mut evaluator = evaluator::Evaluator::new();
 
     loop {
@@ -17,7 +19,9 @@ pub fn start() {
         print!("{}", PROMPT);
 
         stdout().flush().expect("Error flushing stdout");
-        stdin().read_line(&mut input).expect("Error reading from STDIN");
+        stdin()
+            .read_line(&mut input)
+            .expect("Error reading from STDIN");
 
         let lexer = lexer::Lexer::new(&input);
         let mut parser = parser::Parser::new(lexer);
@@ -40,7 +44,6 @@ pub fn start() {
                 println!("Whoops! We ran into some monkey business here!");
                 println!("evaluation error:");
             }
-
 
             println!("{}", eval.inspect());
             println!("\n");

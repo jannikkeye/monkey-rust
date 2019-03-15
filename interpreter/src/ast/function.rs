@@ -1,14 +1,14 @@
-use crate::token::Token;
 use super::identifier::Identifier;
 use super::statement::BlockStatement;
 use super::{Node, NodeKind};
+use crate::token::Token;
 use std::fmt;
 
 #[derive(Debug, Eq)]
 pub struct FunctionLiteral {
     pub token: Token,
     pub paramters: Vec<Identifier>,
-    pub body: Option<BlockStatement>
+    pub body: Option<BlockStatement>,
 }
 
 impl FunctionLiteral {
@@ -40,7 +40,11 @@ impl PartialEq for FunctionLiteral {
 impl fmt::Display for FunctionLiteral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut string = String::new();
-        let parameters = self.paramters.iter().map(|v| v.to_string()).collect::<Vec<String>>();
+        let parameters = self
+            .paramters
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<String>>();
 
         string.push_str("(");
         string.push_str(&parameters.join(", "));
@@ -49,7 +53,6 @@ impl fmt::Display for FunctionLiteral {
         if let Some(body) = &self.body {
             string.push_str(&body.to_string());
         }
-
 
         write!(f, "{}", &string)
     }

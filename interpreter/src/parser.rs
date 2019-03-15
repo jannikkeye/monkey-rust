@@ -1,19 +1,19 @@
 use crate::ast::{
-    program::Program,
-    statement::{Statement, LetStatement, ReturnStatement, ExpressionStatement, BlockStatement},
+    boolean::Boolean,
+    call::Call,
     expression::Expression,
+    function::FunctionLiteral,
     identifier::Identifier,
+    if_expression::If,
+    infix::Infix,
     int::IntegerLiteral,
     prefix::Prefix,
-    infix::Infix,
-    boolean::Boolean,
-    if_expression::If,
-    call::Call,
-    function::FunctionLiteral,
+    program::Program,
+    statement::{BlockStatement, ExpressionStatement, LetStatement, ReturnStatement, Statement},
 };
-use std::collections::HashMap;
 use crate::lexer::Lexer;
-use crate:: token::{Token, TokenKind};
+use crate::token::{Token, TokenKind};
+use std::collections::HashMap;
 use std::{error::Error, fmt};
 
 #[repr(C)]
@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
             current_token: None,
             peek_token: None,
             errors: vec![],
-            precedences: HashMap::with_capacity(8)
+            precedences: HashMap::with_capacity(8),
         };
 
         let precedences = vec![
@@ -86,7 +86,6 @@ impl<'a> Parser<'a> {
         self.next_token();
 
         let expression = self.parse_expression(&Precedence::LOWEST);
-
 
         if !self.expect_peek(TokenKind::RPAREN) {
             return None;
@@ -180,10 +179,11 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-
             self.next_token();
 
-            if_expression.condition = Some(Box::new(self.parse_expression(&Precedence::LOWEST).unwrap()));
+            if_expression.condition = Some(Box::new(
+                self.parse_expression(&Precedence::LOWEST).unwrap(),
+            ));
 
             if !self.expect_peek(TokenKind::RPAREN) {
                 return None;
@@ -215,10 +215,12 @@ impl<'a> Parser<'a> {
         if let Some(token) = &self.current_token {
             let mut block = BlockStatement::new(&token);
 
-
             self.next_token();
 
-            while self.current_token.is_some() && !self.current_token_is(TokenKind::RBRACE) && !self.current_token_is(TokenKind::EOF) {
+            while self.current_token.is_some()
+                && !self.current_token_is(TokenKind::RBRACE)
+                && !self.current_token_is(TokenKind::EOF)
+            {
                 let statement = self.parse_statement();
 
                 if let Some(s) = statement {
@@ -289,7 +291,7 @@ impl<'a> Parser<'a> {
 
             let mut infix = Infix::new(&token, left, &token.literal, None);
             let precedence = self.current_precedence();
-            
+
             self.next_token();
 
             infix.right = Box::new(self.parse_expression(&precedence));
@@ -303,7 +305,6 @@ impl<'a> Parser<'a> {
     pub fn parse_program(&mut self) -> Result<Program, ProgramParsingError> {
         let mut program = Program::new();
 
-        
         while let Some(token) = &self.current_token {
             if token.kind != TokenKind::EOF {
                 if token.kind == TokenKind::SEMICOLON {
@@ -327,8 +328,12 @@ impl<'a> Parser<'a> {
     fn parse_identifier(&mut self) -> Option<Expression> {
         if let Some(token) = &self.current_token {
             return match token.kind {
-                TokenKind::IDENT => Some(Expression::Ident(Identifier::new(&token, &token.literal))),
-                TokenKind::INT => Some(Expression::Int(IntegerLiteral::new(&token, &token.literal))),
+                TokenKind::IDENT => {
+                    Some(Expression::Ident(Identifier::new(&token, &token.literal)))
+                }
+                TokenKind::INT => {
+                    Some(Expression::Int(IntegerLiteral::new(&token, &token.literal)))
+                }
                 TokenKind::TRUE => Some(Expression::Bool(Boolean::new(&token, true))),
                 TokenKind::FALSE => Some(Expression::Bool(Boolean::new(&token, false))),
                 _ => None,
@@ -359,11 +364,10 @@ impl<'a> Parser<'a> {
             if self.peek_token_is(TokenKind::SEMICOLON) {
                 self.next_token();
             }
-            
+
             if self.peek_token_is(TokenKind::EOF) {
                 self.next_token();
             }
-
 
             return Some(Statement::Expression(statement));
         }
@@ -379,7 +383,7 @@ impl<'a> Parser<'a> {
                 TokenKind::IF => true,
                 TokenKind::FUNCTION => true,
                 TokenKind::LPAREN => true,
-                _ => false
+                _ => false,
             };
         } else {
             return false;
@@ -389,7 +393,13 @@ impl<'a> Parser<'a> {
     fn is_infix_expression(&self) -> bool {
         if let Some(token) = &self.current_token {
             if let Some(peek_token) = &self.peek_token {
-                if token.kind == TokenKind::IDENT || token.kind == TokenKind::INT || token.kind == TokenKind::TRUE || token.kind == TokenKind::FALSE || token.kind == TokenKind::RPAREN || token.kind == TokenKind::RBRACE {
+                if token.kind == TokenKind::IDENT
+                    || token.kind == TokenKind::INT
+                    || token.kind == TokenKind::TRUE
+                    || token.kind == TokenKind::FALSE
+                    || token.kind == TokenKind::RPAREN
+                    || token.kind == TokenKind::RBRACE
+                {
                     return match peek_token.kind {
                         TokenKind::LPAREN => true,
                         TokenKind::PLUS => true,
@@ -401,7 +411,7 @@ impl<'a> Parser<'a> {
                         TokenKind::LT => true,
                         TokenKind::GT => true,
                         _ => false,
-                    }
+                    };
                 }
             }
 
@@ -422,7 +432,6 @@ impl<'a> Parser<'a> {
 
         while !self.peek_token_is(TokenKind::SEMICOLON) && precendence < self.peek_precedence() {
             if !self.is_infix_expression() {
-
                 return left_expr;
             }
 
@@ -448,7 +457,7 @@ impl<'a> Parser<'a> {
                 self.next_token();
 
                 Some(Statement::Return(return_statement))
-            },
+            }
             None => None,
         }
     }
@@ -466,7 +475,6 @@ impl<'a> Parser<'a> {
 
                 let_statement.name = Some(Identifier::new(&identifier, &identifier.literal));
 
-
                 if !self.expect_peek(TokenKind::ASSIGN) {
                     return None;
                 }
@@ -482,7 +490,7 @@ impl<'a> Parser<'a> {
                 self.next_token();
 
                 Some(Statement::Let(let_statement))
-            },
+            }
             None => None,
         }
     }
@@ -503,11 +511,9 @@ impl<'a> Parser<'a> {
 
     fn current_precedence(&self) -> Precedence {
         match &self.current_token {
-            Some(token) => {
-                match self.precedences.get(&token.kind) {
-                    Some(precedence) => precedence.clone(),
-                    None => Precedence::LOWEST,
-                }
+            Some(token) => match self.precedences.get(&token.kind) {
+                Some(precedence) => precedence.clone(),
+                None => Precedence::LOWEST,
             },
             None => Precedence::LOWEST,
         }
@@ -515,11 +521,9 @@ impl<'a> Parser<'a> {
 
     fn peek_precedence(&self) -> &Precedence {
         match &self.peek_token {
-            Some(token) => {
-                match self.precedences.get(&token.kind) {
-                    Some(precedence) => precedence,
-                    None => &Precedence::LOWEST,
-                }
+            Some(token) => match self.precedences.get(&token.kind) {
+                Some(precedence) => precedence,
+                None => &Precedence::LOWEST,
             },
             None => &Precedence::LOWEST,
         }
@@ -537,8 +541,8 @@ impl<'a> Parser<'a> {
                 self.peek_error(kind);
 
                 false
-            },
-            None => false
+            }
+            None => false,
         }
     }
 
@@ -571,9 +575,21 @@ mod tests {
         }
 
         let tests = vec![
-            Test { input: "let x =  5;", name: "x", value: 5 },
-            Test { input: "let y =  10;", name: "y", value: 10 },
-            Test { input: "let foobar =  838383;", name: "foobar", value: 838383 },
+            Test {
+                input: "let x =  5;",
+                name: "x",
+                value: 5,
+            },
+            Test {
+                input: "let y =  10;",
+                name: "y",
+                value: 10,
+            },
+            Test {
+                input: "let foobar =  838383;",
+                name: "foobar",
+                value: 838383,
+            },
         ];
 
         for test in tests.iter() {
@@ -604,10 +620,10 @@ mod tests {
                             match &ls.value {
                                 Some(Expression::Int(int)) => {
                                     assert_eq!(int.value, test.value);
-                                },
+                                }
                                 _ => panic!("not an integer expression"),
                             }
-                        },
+                        }
                         _ => panic!("not a let statement"),
                     }
                 }
@@ -635,21 +651,15 @@ return 993322;
             Err(error) => panic!(format!("{}", error)),
             Ok(program) => {
                 assert_eq!(program.statements.len(), 3);
-                let tests: [&str; 3] = [
-                    "5",
-                    "10",
-                    "993322",
-                ];
+                let tests: [&str; 3] = ["5", "10", "993322"];
 
                 for (i, return_value) in tests.iter().enumerate() {
                     let statement: &Statement = &program.statements[i];
 
                     match statement {
-                        Statement::Return(r) => {
-                            match &r.return_value {
-                                Some(value) => assert_eq!(&value.token_literal(), return_value),
-                                None => {}
-                            }
+                        Statement::Return(r) => match &r.return_value {
+                            Some(value) => assert_eq!(&value.token_literal(), return_value),
+                            None => {}
                         },
                         _ => {}
                     };
@@ -661,7 +671,7 @@ return 993322;
     #[test]
     fn test_string() {
         use crate::token::{Token, TokenKind};
-        
+
         let input = "let five = 5;
 let ten = 10;
 let nine = 9;
@@ -701,14 +711,14 @@ let nine = 9;
                                 assert_eq!(identifier.value, "foobar");
                                 assert_eq!(identifier.token.kind, TokenKind::IDENT);
                                 assert_eq!(identifier.token.literal, "foobar");
-                            },
-                            Some(_) => {},
-                            None => {},
+                            }
+                            Some(_) => {}
+                            None => {}
                         }
-                    },
+                    }
                     _ => panic!("statement not an expression"),
                 }
-            },
+            }
             Err(err) => panic!(err),
         }
     }
@@ -732,20 +742,20 @@ let nine = 9;
                         assert_eq!(statement.token.kind, TokenKind::INT);
                         assert_eq!(statement.token.literal, "5");
                         assert!(statement.expression.is_some());
-                        
+
                         match &statement.expression {
                             Some(Expression::Int(int)) => {
                                 assert_eq!(int.value, 5);
                                 assert_eq!(int.token.kind, TokenKind::INT);
                                 assert_eq!(int.token.literal, "5");
-                            },
-                            Some(_) => {},
-                            None => {},
+                            }
+                            Some(_) => {}
+                            None => {}
                         }
-                    },
+                    }
                     _ => panic!("statement not an expression"),
                 }
-            },
+            }
             Err(err) => panic!(err),
         }
     }
@@ -761,15 +771,32 @@ let nine = 9;
         impl<'a> Test<'a> {
             pub fn new(input: &'a str, operator: &'a str, right_value: Expression) -> Self {
                 Test {
-                    input, operator, right_value,
+                    input,
+                    operator,
+                    right_value,
                 }
             }
         }
 
         let tests = vec![
-            Test::new("!5", "!", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("!true", "!", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true))),
-            Test::new("-variable", "-", Expression::Ident(Identifier::new(&Token::from_literal("variable"), "variable")))
+            Test::new(
+                "!5",
+                "!",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "!true",
+                "!",
+                Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)),
+            ),
+            Test::new(
+                "-variable",
+                "-",
+                Expression::Ident(Identifier::new(
+                    &Token::from_literal("variable"),
+                    "variable",
+                )),
+            ),
         ];
 
         for test in tests.iter() {
@@ -789,15 +816,14 @@ let nine = 9;
                                 Some(expression) => assert_eq!(expression, &test.right_value),
                                 None => panic!("no right expression found"),
                             };
-                        },
+                        }
                         Some(_) | None => panic!("no prefix expression found"),
                     }
-                },
+                }
                 _ => panic!("no statement found"),
             };
         }
     }
-
 
     #[test]
     fn test_infix_expressions() {
@@ -809,25 +835,97 @@ let nine = 9;
         }
 
         impl<'a> Test<'a> {
-            pub fn new(input: &'a str, left_value: Expression, operator: &'a str, right_value: Expression) -> Self {
+            pub fn new(
+                input: &'a str,
+                left_value: Expression,
+                operator: &'a str,
+                right_value: Expression,
+            ) -> Self {
                 Test {
-                    input, left_value, operator, right_value,
+                    input,
+                    left_value,
+                    operator,
+                    right_value,
                 }
             }
         }
 
         let tests: Vec<Test> = vec![
-            Test::new("5 + 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "+", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("5 - 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "-", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("5 * 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "*", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("5 / 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "/", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("5 > 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), ">", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("5 < 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "<", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("5 == 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "==", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("5 != 5", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5"))),
-            Test::new("true == true", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)), "==", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true))),
-            Test::new("true != 100", Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "100"), "100"))),
-            Test::new("variable != 100", Expression::Ident(Identifier::new(&Token::from_literal("variable"), "variable")), "!=", Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "100"), "100"))),
+            Test::new(
+                "5 + 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                "+",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "5 - 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                "-",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "5 * 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                "*",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "5 / 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                "/",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "5 > 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                ">",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "5 < 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                "<",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "5 == 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                "==",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "5 != 5",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+                "!=",
+                Expression::Int(IntegerLiteral::new(&Token::new(TokenKind::INT, "5"), "5")),
+            ),
+            Test::new(
+                "true == true",
+                Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)),
+                "==",
+                Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)),
+            ),
+            Test::new(
+                "true != 100",
+                Expression::Bool(Boolean::new(&Token::new(TokenKind::TRUE, "true"), true)),
+                "!=",
+                Expression::Int(IntegerLiteral::new(
+                    &Token::new(TokenKind::INT, "100"),
+                    "100",
+                )),
+            ),
+            Test::new(
+                "variable != 100",
+                Expression::Ident(Identifier::new(
+                    &Token::from_literal("variable"),
+                    "variable",
+                )),
+                "!=",
+                Expression::Int(IntegerLiteral::new(
+                    &Token::new(TokenKind::INT, "100"),
+                    "100",
+                )),
+            ),
         ];
 
         for test in tests.iter() {
@@ -852,10 +950,10 @@ let nine = 9;
                                 Some(expression) => assert_eq!(expression, &test.right_value),
                                 None => panic!("no left expression found"),
                             };
-                        },
-                        Some(_) | None => panic!("expected infix expression")
+                        }
+                        Some(_) | None => panic!("expected infix expression"),
                     }
-                },
+                }
                 _ => panic!("expected infix expression"),
             }
         }
@@ -863,9 +961,7 @@ let nine = 9;
 
     #[test]
     fn test_boolean_infix_expression() {
-        struct Test {
-
-        }
+        struct Test {}
 
         let inputs = vec!["true == true;"];
         let operators = vec!["=="];
@@ -876,53 +972,51 @@ let nine = 9;
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
 
-
             for e in parser.errors.iter() {
                 println!("parse error: {}", e);
             }
-
 
             match program {
                 Ok(p) => {
                     assert_eq!(p.statements.len(), 1);
 
-                match &p.statements[0] {
-                    Statement::Expression(statement) => {
-                        assert_eq!(statement.token.kind, TokenKind::TRUE);
-                        assert_eq!(statement.token.literal, "true");
-                        assert!(statement.expression.is_some());
+                    match &p.statements[0] {
+                        Statement::Expression(statement) => {
+                            assert_eq!(statement.token.kind, TokenKind::TRUE);
+                            assert_eq!(statement.token.literal, "true");
+                            assert!(statement.expression.is_some());
 
-                        match &statement.expression {
-                            Some(Expression::Infix(infix)) => {
-                                assert_eq!(infix.token.kind, token_kinds[index]);
-                                assert_eq!(infix.operator, operators[index]);
-                                assert!(infix.right.is_some());
-                                
-                                match &*infix.left {
-                                    Some(Expression::Bool(boolean)) => {
-                                        assert_eq!(boolean.value, true);
-                                        assert_eq!(boolean.token.kind, TokenKind::TRUE);
-                                    },
-                                    Some(_) => panic!("Expected integer expression. Got None."),
-                                    None => panic!("Expected integer expression. Got None.")
-                                }
+                            match &statement.expression {
+                                Some(Expression::Infix(infix)) => {
+                                    assert_eq!(infix.token.kind, token_kinds[index]);
+                                    assert_eq!(infix.operator, operators[index]);
+                                    assert!(infix.right.is_some());
 
-                                match &*infix.right {
-                                    Some(Expression::Bool(boolean)) => {
-                                        assert_eq!(boolean.value, true);
-                                        assert_eq!(boolean.token.kind, TokenKind::TRUE);
-                                    },
-                                    Some(_) => panic!("Expected integer expression. Got None."),
-                                    None => panic!("Expected integer expression. Got None.")
+                                    match &*infix.left {
+                                        Some(Expression::Bool(boolean)) => {
+                                            assert_eq!(boolean.value, true);
+                                            assert_eq!(boolean.token.kind, TokenKind::TRUE);
+                                        }
+                                        Some(_) => panic!("Expected integer expression. Got None."),
+                                        None => panic!("Expected integer expression. Got None."),
+                                    }
+
+                                    match &*infix.right {
+                                        Some(Expression::Bool(boolean)) => {
+                                            assert_eq!(boolean.value, true);
+                                            assert_eq!(boolean.token.kind, TokenKind::TRUE);
+                                        }
+                                        Some(_) => panic!("Expected integer expression. Got None."),
+                                        None => panic!("Expected integer expression. Got None."),
+                                    }
                                 }
-                            },
-                            Some(_) => {},
-                            None => {},
+                                Some(_) => {}
+                                None => {}
+                            }
                         }
-                    },
-                    _ => panic!("statement not an expression"),
+                        _ => panic!("statement not an expression"),
+                    }
                 }
-                },
                 Err(err) => panic!(err),
             }
         }
@@ -936,15 +1030,42 @@ let nine = 9;
         }
 
         let tests = vec![
-            Test { input: "true", expected: "true" },
-            Test { input: "false", expected: "false" },
-            Test { input: "-1 * 2 + 3", expected: "(((-1) * 2) + 3)" },
-            Test { input: "3 > 5 == false", expected: "((3 > 5) == false)" },
-            Test { input: "3 < 5 == true", expected: "((3 < 5) == true)" },
-            Test { input: "-3 * 5 != true / -100", expected: "(((-3) * 5) != (true / (-100)))"},
-            Test { input: "1 + (2 + 3) + 4", expected: "((1 + (2 + 3)) + 4)" },
-            Test { input: "(2 + 3) + 1", expected: "((2 + 3) + 1)" },
-            Test { input: "a + add(b * c) + d", expected: "((a + add((b * c))) + d)" },
+            Test {
+                input: "true",
+                expected: "true",
+            },
+            Test {
+                input: "false",
+                expected: "false",
+            },
+            Test {
+                input: "-1 * 2 + 3",
+                expected: "(((-1) * 2) + 3)",
+            },
+            Test {
+                input: "3 > 5 == false",
+                expected: "((3 > 5) == false)",
+            },
+            Test {
+                input: "3 < 5 == true",
+                expected: "((3 < 5) == true)",
+            },
+            Test {
+                input: "-3 * 5 != true / -100",
+                expected: "(((-3) * 5) != (true / (-100)))",
+            },
+            Test {
+                input: "1 + (2 + 3) + 4",
+                expected: "((1 + (2 + 3)) + 4)",
+            },
+            Test {
+                input: "(2 + 3) + 1",
+                expected: "((2 + 3) + 1)",
+            },
+            Test {
+                input: "a + add(b * c) + d",
+                expected: "((a + add((b * c))) + d)",
+            },
         ];
 
         for test in tests.iter() {
@@ -958,7 +1079,7 @@ let nine = 9;
             assert_eq!(test.expected, program.to_string());
         }
     }
-    
+
     #[test]
     fn test_boolean_expression() {
         let input = "let boolean = true;";
@@ -976,18 +1097,18 @@ let nine = 9;
                     Some(name) => {
                         assert_eq!(name.token.kind, TokenKind::IDENT);
                         assert_eq!(name.value, "boolean");
-                    },
-                    None => panic!("boolean expression failed")
+                    }
+                    None => panic!("boolean expression failed"),
                 }
 
                 match &let_statement.value {
                     Some(Expression::Bool(boolean)) => {
                         assert_eq!(boolean.token.kind, TokenKind::TRUE);
                         assert_eq!(boolean.value, true);
-                    },
+                    }
                     Some(_) | None => panic!("boolean expression test failed"),
                 }
-            },
+            }
             _ => panic!("boolean expression test failed"),
         }
 
@@ -1015,26 +1136,24 @@ let nine = 9;
                             assert_eq!(consequence.token.kind, TokenKind::LBRACE);
 
                             match &consequence.statements[0] {
-                                Statement::Expression(statement) => {
-                                    match &statement.expression {
-                                        Some(Expression::Ident(ident)) => {
-                                            assert_eq!(ident.token.kind, TokenKind::IDENT);
-                                            assert_eq!(ident.value, "x");
-                                        },
-                                        Some(_) | None => panic!("not an identifier expression"),
+                                Statement::Expression(statement) => match &statement.expression {
+                                    Some(Expression::Ident(ident)) => {
+                                        assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                        assert_eq!(ident.value, "x");
                                     }
+                                    Some(_) | None => panic!("not an identifier expression"),
                                 },
-                                _ => panic!("not an expression statement")
+                                _ => panic!("not an expression statement"),
                             }
                         }
 
                         assert!(if_expression.alternative.is_none());
-                    },
+                    }
                     _ => panic!("not an if expression"),
                 }
-            },
+            }
             _ => panic!("not an expression statement"),
-        }    
+        }
     }
 
     #[test]
@@ -1058,16 +1177,14 @@ let nine = 9;
                             assert_eq!(consequence.token.kind, TokenKind::LBRACE);
 
                             match &consequence.statements[0] {
-                                Statement::Expression(statement) => {
-                                    match &statement.expression {
-                                        Some(Expression::Ident(ident)) => {
-                                            assert_eq!(ident.token.kind, TokenKind::IDENT);
-                                            assert_eq!(ident.value, "x");
-                                        },
-                                        Some(_) | None => panic!("not an identifier expression"),
+                                Statement::Expression(statement) => match &statement.expression {
+                                    Some(Expression::Ident(ident)) => {
+                                        assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                        assert_eq!(ident.value, "x");
                                     }
+                                    Some(_) | None => panic!("not an identifier expression"),
                                 },
-                                _ => panic!("not an expression statement")
+                                _ => panic!("not an expression statement"),
                             }
                         }
 
@@ -1075,22 +1192,20 @@ let nine = 9;
                             assert_eq!(alternative.token.kind, TokenKind::LBRACE);
 
                             match &alternative.statements[0] {
-                                Statement::Expression(statement) => {
-                                    match &statement.expression {
-                                        Some(Expression::Ident(ident)) => {
-                                            assert_eq!(ident.token.kind, TokenKind::IDENT);
-                                            assert_eq!(ident.value, "y");
-                                        },
-                                        Some(_) | None => panic!("not an identifier expression"),
+                                Statement::Expression(statement) => match &statement.expression {
+                                    Some(Expression::Ident(ident)) => {
+                                        assert_eq!(ident.token.kind, TokenKind::IDENT);
+                                        assert_eq!(ident.value, "y");
                                     }
+                                    Some(_) | None => panic!("not an identifier expression"),
                                 },
                                 _ => panic!("not an expression statement"),
                             }
                         }
-                    },
+                    }
                     _ => panic!("not an if expression"),
                 }
-            },
+            }
             _ => panic!("not an expression statement"),
         }
     }
@@ -1112,47 +1227,59 @@ let nine = 9;
                     Some(Expression::Function(function_expression)) => {
                         assert_eq!(function_expression.token.kind, TokenKind::FUNCTION);
 
-                        assert_eq!(function_expression.paramters[0].token, Token::from_literal("x"));
-                        assert_eq!(function_expression.paramters[1].token, Token::from_literal("y"));
+                        assert_eq!(
+                            function_expression.paramters[0].token,
+                            Token::from_literal("x")
+                        );
+                        assert_eq!(
+                            function_expression.paramters[1].token,
+                            Token::from_literal("y")
+                        );
 
                         if let Some(body) = &function_expression.body {
                             assert_eq!(body.token.kind, TokenKind::LBRACE);
 
                             match &body.statements[0] {
-                                Statement::Expression(statement) => {
-                                    match &statement.expression {
-                                        Some(Expression::Infix(infix)) => {
-                                            assert_eq!(infix.token.kind, TokenKind::PLUS);
-                                            assert_eq!(infix.operator, "+");
+                                Statement::Expression(statement) => match &statement.expression {
+                                    Some(Expression::Infix(infix)) => {
+                                        assert_eq!(infix.token.kind, TokenKind::PLUS);
+                                        assert_eq!(infix.operator, "+");
 
-                                            match &*infix.left {
-                                                Some(Expression::Ident(ident)) => {
-                                                    assert_eq!(ident.value, "x");
-                                                    assert_eq!(ident.token.kind, TokenKind::IDENT);
-                                                },
-                                                Some(_) => panic!("Expected identifier expression. Got None."),
-                                                None => panic!("Expected integer expression. Got None.")
+                                        match &*infix.left {
+                                            Some(Expression::Ident(ident)) => {
+                                                assert_eq!(ident.value, "x");
+                                                assert_eq!(ident.token.kind, TokenKind::IDENT);
                                             }
+                                            Some(_) => {
+                                                panic!("Expected identifier expression. Got None.")
+                                            }
+                                            None => {
+                                                panic!("Expected integer expression. Got None.")
+                                            }
+                                        }
 
-                                            match &*infix.right {
-                                                Some(Expression::Ident(ident)) => {
-                                                    assert_eq!(ident.value, "y");
-                                                    assert_eq!(ident.token.kind, TokenKind::IDENT);
-                                                },
-                                                Some(_) => panic!("Expected identifier expression. Got None."),
-                                                None => panic!("Expected integer expression. Got None.")
+                                        match &*infix.right {
+                                            Some(Expression::Ident(ident)) => {
+                                                assert_eq!(ident.value, "y");
+                                                assert_eq!(ident.token.kind, TokenKind::IDENT);
                                             }
-                                        },
-                                        Some(_) | None => panic!("not an identifier expression"),
+                                            Some(_) => {
+                                                panic!("Expected identifier expression. Got None.")
+                                            }
+                                            None => {
+                                                panic!("Expected integer expression. Got None.")
+                                            }
+                                        }
                                     }
+                                    Some(_) | None => panic!("not an identifier expression"),
                                 },
-                                _ => panic!("not an expression statement")
+                                _ => panic!("not an expression statement"),
                             }
                         }
-                    },
+                    }
                     _ => panic!("not an if expression"),
                 }
-            },
+            }
             _ => panic!("not an expression statement"),
         }
     }
@@ -1175,7 +1302,9 @@ let nine = 9;
                     Some(Expression::Call(call_expression)) => {
                         assert_eq!(call_expression.token.kind, TokenKind::LPAREN);
 
-                        if let Some(Expression::Function(func)) = call_expression.function.as_ref().map(|b| b.as_ref()) {
+                        if let Some(Expression::Function(func)) =
+                            call_expression.function.as_ref().map(|b| b.as_ref())
+                        {
                             assert_eq!(func.token.kind, TokenKind::LPAREN);
                             assert_eq!(func.token.literal, "add");
                         }
@@ -1187,10 +1316,10 @@ let nine = 9;
                         }
 
                         assert_eq!(call_expression.arguments.len(), 3);
-                    },
+                    }
                     _ => panic!("not a call expression"),
                 }
-            },
+            }
             _ => panic!("not an expression statement"),
         }
     }

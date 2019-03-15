@@ -18,7 +18,7 @@ impl<'a> Lexer<'a> {
             position: 0,
             read_position: 0,
             ch: 0,
-            eof: false
+            eof: false,
         }
     }
 
@@ -32,7 +32,7 @@ impl<'a> Lexer<'a> {
 
     fn is_whitespace(&self, byte: &u8) -> bool {
         byte == &b' ' || byte == &b'\t' || byte == &b'\n' || byte == &b'\r'
-    } 
+    }
 
     fn read_char(&mut self) -> u8 {
         self.position = self.read_position;
@@ -125,13 +125,16 @@ impl<'a> Iterator for Lexer<'a> {
                     }
 
                     bytes
-                },
+                }
                 _ => vec![self.ch],
             }
         };
 
         if is_number {
-            return Some(Token::new(TokenKind::INT, String::from_utf8(bytes).unwrap().as_ref()));
+            return Some(Token::new(
+                TokenKind::INT,
+                String::from_utf8(bytes).unwrap().as_ref(),
+            ));
         }
 
         Some(Token::from_bytes(bytes))
@@ -162,7 +165,7 @@ mod tests {
     #[test]
     fn next_token() {
         use crate::token::{Token, TokenKind};
-        
+
         let input = "let five = 5;
 let ten = 10;
 let add = fn(x, y) {
@@ -258,7 +261,6 @@ if (5 < 10) {
         ];
 
         let mut lexer = Lexer::new(input);
-
 
         assert_eq!(lexer.input, input.as_bytes());
 

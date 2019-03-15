@@ -1,6 +1,6 @@
-use crate::token::Token;
 use super::expression::Expression;
 use super::{Node, NodeKind};
+use crate::token::Token;
 
 #[derive(Debug, Eq)]
 pub struct Prefix {

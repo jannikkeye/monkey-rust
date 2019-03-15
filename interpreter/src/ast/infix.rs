@@ -1,6 +1,6 @@
-use crate::token::Token;
 use super::expression::Expression;
 use super::{Node, NodeKind};
+use crate::token::Token;
 
 #[derive(Debug)]
 pub struct Infix {
@@ -11,7 +11,12 @@ pub struct Infix {
 }
 
 impl Infix {
-    pub fn new(token: &Token, left: Option<Expression>, operator: &str, right: Option<Expression>) -> Self {
+    pub fn new(
+        token: &Token,
+        left: Option<Expression>,
+        operator: &str,
+        right: Option<Expression>,
+    ) -> Self {
         Infix {
             token: token.clone(),
             left: Box::new(left),
@@ -23,7 +28,10 @@ impl Infix {
 
 impl PartialEq for Infix {
     fn eq(&self, other: &Infix) -> bool {
-        self.token == other.token && self.operator == other.operator && self.right == other.right && self.left == other.left
+        self.token == other.token
+            && self.operator == other.operator
+            && self.right == other.right
+            && self.left == other.left
     }
 }
 

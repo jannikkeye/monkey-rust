@@ -1,6 +1,6 @@
-use crate::token::Token;
 use super::expression::Expression;
 use super::{Node, NodeKind};
+use crate::token::Token;
 use std::fmt;
 
 #[derive(Debug, Eq)]
@@ -22,7 +22,9 @@ impl Call {
 
 impl PartialEq for Call {
     fn eq(&self, other: &Call) -> bool {
-        self.token == other.token && self.function == other.function && self.arguments == other.arguments
+        self.token == other.token
+            && self.function == other.function
+            && self.arguments == other.arguments
     }
 }
 

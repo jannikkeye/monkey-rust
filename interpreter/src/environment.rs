@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::object::Object;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Environment {
@@ -14,7 +14,7 @@ impl Environment {
     }
 
     fn make_key(&self, name: &str) -> String {
-        let mut  key = String::new();
+        let mut key = String::new();
 
         key.push_str(name);
 

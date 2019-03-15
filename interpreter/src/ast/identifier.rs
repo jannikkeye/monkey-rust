@@ -1,6 +1,6 @@
-use std::fmt;
-use crate::token::Token;
 use super::{Node, NodeKind};
+use crate::token::Token;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Identifier {
@@ -16,7 +16,6 @@ impl Identifier {
         }
     }
 }
-
 
 impl PartialEq for Identifier {
     fn eq(&self, other: &Identifier) -> bool {

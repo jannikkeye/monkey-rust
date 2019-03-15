@@ -1,11 +1,6 @@
-use std::fmt;
+use super::{expression::Expression, identifier::Identifier, Node, NodeKind};
 use crate::token::{Token, TokenKind};
-use super::{
-    Node,
-    NodeKind,
-    identifier::Identifier,
-    expression::Expression,
-};
+use std::fmt;
 
 #[derive(Debug, Eq)]
 pub enum Statement {
@@ -148,30 +143,26 @@ impl PartialEq for BlockStatement {
 impl PartialEq for Statement {
     fn eq(&self, other: &Statement) -> bool {
         match self {
-            Statement::Let(let_statement) => {
-                match other {
-                    Statement::Let(other_let_statement) => let_statement == other_let_statement,
-                    _ => false,
-                }
+            Statement::Let(let_statement) => match other {
+                Statement::Let(other_let_statement) => let_statement == other_let_statement,
+                _ => false,
             },
-            Statement::Return(return_statement) => {
-                match other {
-                    Statement::Return(other_return_statement) => return_statement == other_return_statement,
-                    _ => false,
+            Statement::Return(return_statement) => match other {
+                Statement::Return(other_return_statement) => {
+                    return_statement == other_return_statement
                 }
+                _ => false,
             },
-            Statement::Expression(expression_statement) => {
-                match other {
-                    Statement::Expression(other_expression_statement) => expression_statement == other_expression_statement,
-                    _ => false,
+            Statement::Expression(expression_statement) => match other {
+                Statement::Expression(other_expression_statement) => {
+                    expression_statement == other_expression_statement
                 }
+                _ => false,
             },
-            Statement::Block(block_statement) => {
-                match other {
-                    Statement::Block(other_block_statement) => block_statement == other_block_statement,
-                    _ => false,
-                }
-            }
+            Statement::Block(block_statement) => match other {
+                Statement::Block(other_block_statement) => block_statement == other_block_statement,
+                _ => false,
+            },
         }
     }
 }
@@ -223,16 +214,8 @@ impl fmt::Display for BlockStatement {
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Statement::Let(s) => write!(
-                f,
-                "{}",
-                s.to_string(),
-            ),
-            Statement::Return(s) => write!(
-                f,
-                "{}",
-                s.to_string(),
-            ),
+            Statement::Let(s) => write!(f, "{}", s.to_string(),),
+            Statement::Return(s) => write!(f, "{}", s.to_string(),),
             Statement::Expression(s) => write!(
                 f,
                 "{}",
@@ -241,12 +224,8 @@ impl fmt::Display for Statement {
                     None => String::new(),
                 }
             ),
-            Statement::Block(b) => write!(
-                f,
-                "{}",
-                b.to_string(),
-            ),
-            _ => write!(f, "")
+            Statement::Block(b) => write!(f, "{}", b.to_string(),),
+            _ => write!(f, ""),
         }
     }
 }

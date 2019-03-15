@@ -1,5 +1,5 @@
-use crate::token::Token;
 use super::{Node, NodeKind};
+use crate::token::Token;
 
 #[derive(Debug, Eq)]
 pub struct IntegerLiteral {
@@ -9,13 +9,14 @@ pub struct IntegerLiteral {
 
 impl IntegerLiteral {
     pub fn new(token: &Token, value: &str) -> Self {
-        let parsed_value = value.parse::<i64>().expect("failed to parse integer literal");
+        let parsed_value = value
+            .parse::<i64>()
+            .expect("failed to parse integer literal");
 
         IntegerLiteral {
             token: token.clone(),
             value: parsed_value,
         }
-        
     }
 }
 
