@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
     fn parse_grouped_expression(&mut self) -> Option<Expression> {
         self.next_token();
 
-        let expression = self.parse_expression(&Precedence::LOWEST);
+        let expression = self.parse_expression(Precedence::LOWEST);
 
         if !self.expect_peek(TokenKind::RPAREN) {
             return None;
@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
 
                     self.next_token();
 
-                    prefix.right = Box::new(self.parse_expression(&Precedence::PREFIX));
+                    prefix.right = Box::new(self.parse_expression(Precedence::PREFIX));
 
                     return Some(Expression::Prefix(prefix));
                 }
@@ -182,7 +182,7 @@ impl<'a> Parser<'a> {
             self.next_token();
 
             if_expression.condition = Some(Box::new(
-                self.parse_expression(&Precedence::LOWEST).unwrap(),
+                self.parse_expression(Precedence::LOWEST).unwrap(),
             ));
 
             if !self.expect_peek(TokenKind::RPAREN) {
@@ -261,7 +261,7 @@ impl<'a> Parser<'a> {
 
         self.next_token();
 
-        if let Some(expression) = self.parse_expression(&Precedence::LOWEST) {
+        if let Some(expression) = self.parse_expression(Precedence::LOWEST) {
             args.push(Some(Box::new(expression)));
         }
 
@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
             self.next_token();
             self.next_token();
 
-            if let Some(expression) = self.parse_expression(&Precedence::LOWEST) {
+            if let Some(expression) = self.parse_expression(Precedence::LOWEST) {
                 args.push(Some(Box::new(expression)));
             }
         }
@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
 
             self.next_token();
 
-            infix.right = Box::new(self.parse_expression(&precedence));
+            infix.right = Box::new(self.parse_expression(precedence));
 
             return Some(Expression::Infix(infix));
         }
@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
         if let Some(token) = &mut self.current_token {
             let mut statement = ExpressionStatement::new(token);
 
-            statement.expression = self.parse_expression(&Precedence::LOWEST);
+            statement.expression = self.parse_expression(Precedence::LOWEST);
 
             if self.peek_token_is(TokenKind::SEMICOLON) {
                 self.next_token();
@@ -421,7 +421,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression(&mut self, precendence: &Precedence) -> Option<Expression> {
+    fn parse_expression(&mut self, precendence: Precedence) -> Option<Expression> {
         let mut left_expr;
 
         if self.is_prefix_expression() {
@@ -450,7 +450,7 @@ impl<'a> Parser<'a> {
 
                 self.next_token();
 
-                return_statement.return_value = self.parse_expression(&Precedence::LOWEST);
+                return_statement.return_value = self.parse_expression(Precedence::LOWEST);
 
                 self.next_token();
 
@@ -482,7 +482,7 @@ impl<'a> Parser<'a> {
                 self.next_token();
 
                 while !self.current_token_is(TokenKind::SEMICOLON) {
-                    let_statement.value = self.parse_expression(&Precedence::LOWEST);
+                    let_statement.value = self.parse_expression(Precedence::LOWEST);
 
                     self.next_token();
                 }
@@ -512,20 +512,20 @@ impl<'a> Parser<'a> {
     fn current_precedence(&self) -> Precedence {
         match &self.current_token {
             Some(token) => match self.precedences.get(&token.kind) {
-                Some(precedence) => precedence.clone(),
+                Some(precedence) => *precedence,
                 None => Precedence::LOWEST,
             },
             None => Precedence::LOWEST,
         }
     }
 
-    fn peek_precedence(&self) -> &Precedence {
+    fn peek_precedence(&self) -> Precedence {
         match &self.peek_token {
             Some(token) => match self.precedences.get(&token.kind) {
-                Some(precedence) => precedence,
-                None => &Precedence::LOWEST,
+                Some(precedence) => *precedence,
+                None => Precedence::LOWEST,
             },
-            None => &Precedence::LOWEST,
+            None => Precedence::LOWEST,
         }
     }
 

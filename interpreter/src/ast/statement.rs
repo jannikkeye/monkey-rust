@@ -1,5 +1,5 @@
 use super::{expression::Expression, identifier::Identifier, Node, NodeKind};
-use crate::token::{Token, TokenKind};
+use crate::token::{Token};
 use std::fmt;
 
 #[derive(Debug, Eq)]
@@ -225,7 +225,6 @@ impl fmt::Display for Statement {
                 }
             ),
             Statement::Block(b) => write!(f, "{}", b.to_string(),),
-            _ => write!(f, ""),
         }
     }
 }

@@ -8,6 +8,7 @@ use crate::ast::{
 use crate::environment::Environment;
 use crate::object::{Error, Integer, Object, ObjectVariant, ReturnValue, FALSE, NULL, TRUE};
 
+#[derive(Default)]
 pub struct Evaluator {
     environment: Environment,
 }
@@ -27,9 +28,9 @@ impl Evaluator {
 
     fn eval_boolean(&self, boolean: &boolean::Boolean) -> Object {
         if boolean.value {
-            return Object::Boolean(TRUE);
+            Object::Boolean(TRUE)
         } else {
-            return Object::Boolean(FALSE);
+            Object::Boolean(FALSE)
         }
     }
 
@@ -74,9 +75,9 @@ impl Evaluator {
 
     fn native_boolean_to_boolean_object(&self, value: bool) -> Object {
         if value {
-            return Object::Boolean(TRUE);
+            Object::Boolean(TRUE)
         } else {
-            return Object::Boolean(FALSE);
+            Object::Boolean(FALSE)
         }
     }
 

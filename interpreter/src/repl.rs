@@ -27,7 +27,7 @@ pub fn start() {
         let mut parser = parser::Parser::new(lexer);
         let program = parser.parse_program().expect("parsing failed");
 
-        if parser.errors.len() > 0 {
+        if !parser.errors.is_empty() {
             println!("Whoops! We ran into some monkey business here!");
             println!("parse errors:");
             for e in parser.errors.iter() {

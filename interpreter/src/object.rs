@@ -119,6 +119,6 @@ impl ObjectVariant for ReturnValue {
     }
 
     fn inspect(&self) -> String {
-        format!("{}", self.value.inspect())
+        self.value.inspect().to_string()
     }
 }

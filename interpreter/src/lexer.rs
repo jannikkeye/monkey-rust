@@ -22,16 +22,16 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn is_letter(&self, byte: &u8) -> bool {
-        &b'a' <= byte && byte <= &b'z' || &b'A' <= byte && byte <= &b'Z' || byte == &b'_'
+    fn is_letter(&self, byte: u8) -> bool {
+        b'a' <= byte && byte <= b'z' || b'A' <= byte && byte <= b'Z' || byte == b'_'
     }
 
-    fn is_number(&self, byte: &u8) -> bool {
-        &b'0' <= byte && byte <= &b'9'
+    fn is_number(&self, byte: u8) -> bool {
+        b'0' <= byte && byte <= b'9'
     }
 
-    fn is_whitespace(&self, byte: &u8) -> bool {
-        byte == &b' ' || byte == &b'\t' || byte == &b'\n' || byte == &b'\r'
+    fn is_whitespace(&self, byte: u8) -> bool {
+        byte == b' ' || byte == b'\t' || byte == b'\n' || byte == b'\r'
     }
 
     fn read_char(&mut self) -> u8 {
@@ -46,17 +46,18 @@ impl<'a> Lexer<'a> {
         self.ch
     }
 
-    fn peak_char(&self) -> &u8 {
-        match self.read_position >= self.input.len() {
-            true => &0,
-            false => &self.input[self.read_position],
+    fn peek_char(&self) -> u8 {
+        if self.read_position >= self.input.len() {
+            0
+        } else {
+            self.input[self.read_position]
         }
     }
 
     fn read_letters(&mut self) -> Vec<u8> {
         let mut bytes: Vec<u8> = vec![];
 
-        while self.is_letter(self.peak_char()) {
+        while self.is_letter(self.peek_char()) {
             bytes.push(self.read_char());
         }
 
@@ -66,7 +67,7 @@ impl<'a> Lexer<'a> {
     fn read_numbers(&mut self) -> Vec<u8> {
         let mut bytes: Vec<u8> = vec![];
 
-        while self.is_number(self.peak_char()) {
+        while self.is_number(self.peek_char()) {
             bytes.push(self.read_char());
         }
 
@@ -74,19 +75,9 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_whitespace(&mut self) {
-        while self.is_whitespace(self.peak_char()) {
+        while self.is_whitespace(self.peek_char()) {
             self.read_char();
         }
-    }
-
-    fn read_eq_neq(&mut self) -> Vec<u8> {
-        let mut bytes: Vec<u8> = vec![];
-
-        while self.peak_char() == &b'=' || self.peak_char() == &b'!' {
-            bytes.push(self.read_char());
-        }
-
-        bytes
     }
 }
 
@@ -96,11 +87,11 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<Token> {
         self.read_whitespace();
 
-        let peaked_char = self.peak_char();
+        let peaked_char = self.peek_char();
 
-        if peaked_char == &0 && self.eof {
+        if peaked_char == 0 && self.eof {
             return None;
-        } else if peaked_char == &0 && !self.eof {
+        } else if peaked_char == 0 && !self.eof {
             self.eof = true;
             return Some(Token::from_literal(""));
         }
@@ -120,7 +111,7 @@ impl<'a> Iterator for Lexer<'a> {
 
                     bytes.push(self.ch);
 
-                    if self.peak_char() == &b'=' {
+                    if self.peek_char() == b'=' {
                         bytes.push(self.read_char());
                     }
 
@@ -149,17 +140,17 @@ mod tests {
     fn is_letter() {
         let lexer = Lexer::new("abcdefg");
 
-        assert_eq!(lexer.is_letter(&b'l'), true);
-        assert_eq!(lexer.is_letter(&b'e'), true);
-        assert_eq!(lexer.is_letter(&b't'), true);
-        assert_eq!(lexer.is_letter(&b'a'), true);
-        assert_eq!(lexer.is_letter(&b'z'), true);
-        assert_eq!(lexer.is_letter(&b'A'), true);
-        assert_eq!(lexer.is_letter(&b'Z'), true);
+        assert_eq!(lexer.is_letter(b'l'), true);
+        assert_eq!(lexer.is_letter(b'e'), true);
+        assert_eq!(lexer.is_letter(b't'), true);
+        assert_eq!(lexer.is_letter(b'a'), true);
+        assert_eq!(lexer.is_letter(b'z'), true);
+        assert_eq!(lexer.is_letter(b'A'), true);
+        assert_eq!(lexer.is_letter(b'Z'), true);
 
-        assert_eq!(lexer.is_letter(&b';'), false);
-        assert_eq!(lexer.is_letter(&b','), false);
-        assert_eq!(lexer.is_letter(&b'}'), false);
+        assert_eq!(lexer.is_letter(b';'), false);
+        assert_eq!(lexer.is_letter(b','), false);
+        assert_eq!(lexer.is_letter(b'}'), false);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::{statement::Statement, Node, NodeKind};
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Program {
     pub statements: Vec<Statement>,
 }
@@ -14,9 +14,10 @@ impl Program {
 
 impl Node for Program {
     fn token_literal(&self) -> &str {
-        match self.statements.len() > 0 {
-            true => self.statements[0].token_literal(),
-            false => "",
+        if !self.statements.is_empty() {
+            self.statements[0].token_literal()
+        } else {
+            ""
         }
     }
 
