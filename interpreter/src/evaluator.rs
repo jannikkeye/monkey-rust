@@ -6,7 +6,7 @@ use crate::ast::{
     Node, NodeKind,
 };
 use crate::environment::Environment;
-use crate::object::{Error, Integer, Object, ObjectVariant, ReturnValue, FALSE, NULL, TRUE};
+use crate::object::{Error, Integer, Boolean, Object, ObjectVariant, ReturnValue, FALSE, NULL, TRUE};
 
 #[derive(Default)]
 pub struct Evaluator {
@@ -94,7 +94,10 @@ impl Evaluator {
         match (&left, &right) {
             (Object::Integer(l), Object::Integer(r)) => {
                 self.eval_integer_infix_expression(operator, l, r)
-            }
+            },
+            (Object::Boolean(l), Object::Boolean(r)) => {
+                self.eval_boolean_infix_expression(operator, l, r)
+            },
             (Object::Integer(l), Object::Boolean(r)) => Object::Error(Error::new(format!(
                 "type mismatch: {} {} {}",
                 l.kind(),
@@ -109,6 +112,27 @@ impl Evaluator {
             ))),
             (_, _) => Object::Error(Error::new(format!(
                 "unknown operator: {} {} {}",
+                left.kind(),
+                operator,
+                right.kind()
+            ))),
+        }
+    }
+
+    fn eval_boolean_infix_expression(
+        &self,
+        operator: &str,
+        left: &Boolean,
+        right: &Boolean,
+    ) -> Object {
+        let left_val = left.value;
+        let right_val = right.value;
+
+        match operator {
+            "==" => self.native_boolean_to_boolean_object(left_val == right_val),
+            "!=" => self.native_boolean_to_boolean_object(left_val != right_val),
+            _ => Object::Error(Error::new(format!(
+                "unkown operator: {} {} {}",
                 left.kind(),
                 operator,
                 right.kind()

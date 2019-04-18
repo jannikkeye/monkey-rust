@@ -9,7 +9,7 @@ const PROMPT: &str = ">> ";
 pub fn start() {
     println!(
         "
-
+WELCOME TO THE MONKEY PROGRAMMING LANGUAGE! HAVE FUN, HUMAN!
     "
     );
     let mut evaluator = evaluator::Evaluator::new();
