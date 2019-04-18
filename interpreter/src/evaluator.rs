@@ -40,10 +40,12 @@ impl Evaluator {
         for statement in statements {
             result = self.eval(statement);
 
-            match result {
-                Some(Object::ReturnValue(return_value)) => return Some(return_value.value),
-                Some(Object::Error(error)) => return Some(Object::Error(error)),
-                _ => {}
+            if let Some(Object::ReturnValue(_)) = result {
+                break;
+            }
+
+            if let Some(Object::Error(_)) = result {
+                break;
             }
         }
 
@@ -55,7 +57,7 @@ impl Evaluator {
             "!" => self.eval_bang_operator_expression(right),
             "-" => self.eval_minus_prexif_operator_expression(right),
             _ => Object::Error(Error::new(format!(
-                "unkown operator: {}{}",
+                "unknown operator: {}{}",
                 operator,
                 right.inspect()
             ))),
@@ -132,7 +134,7 @@ impl Evaluator {
             "==" => self.native_boolean_to_boolean_object(left_val == right_val),
             "!=" => self.native_boolean_to_boolean_object(left_val != right_val),
             _ => Object::Error(Error::new(format!(
-                "unkown operator: {} {} {}",
+                "unknown operator: {} {} {}",
                 left.kind(),
                 operator,
                 right.kind()
@@ -167,7 +169,7 @@ impl Evaluator {
             "==" => self.native_boolean_to_boolean_object(left_val == right_val),
             "!=" => self.native_boolean_to_boolean_object(left_val != right_val),
             _ => Object::Error(Error::new(format!(
-                "unkown operator: {} {} {}",
+                "unknown operator: {} {} {}",
                 left.kind(),
                 operator,
                 right.kind()
@@ -330,7 +332,7 @@ mod tests {
     use crate::evaluator::Evaluator;
     use crate::lexer::Lexer;
     use crate::object::{
-        Boolean, Integer, Object, ObjectVariant, BOOLEAN_OBJ, INTEGER_OBJ, NULL_OBJ,
+        Boolean, Integer, Object, ReturnValue, ObjectVariant, BOOLEAN_OBJ, INTEGER_OBJ, NULL_OBJ, RETURN_VALUE_OBJ
     };
     use crate::parser::Parser;
 
@@ -350,6 +352,13 @@ mod tests {
         match expected {
             Some(value) => obj.kind() == INTEGER_OBJ && obj.value == value,
             None => obj.kind() == NULL_OBJ,
+        }
+    }
+
+    fn test_return_value_object(obj: ReturnValue, expected: Option<Object>) -> bool {
+        match expected {
+            Some(value) => obj.kind() == RETURN_VALUE_OBJ && obj.value == value,
+            None => obj.kind() == RETURN_VALUE_OBJ,
         }
     }
 
@@ -579,7 +588,7 @@ mod tests {
 
         let tests = vec![
             Test {
-                input: "if (true) { 10 }",
+                input: "if (true) { return 10; }",
                 expected: Some(10),
             },
             Test {
@@ -606,6 +615,10 @@ mod tests {
                 input: "if (1 < 2) { 10 } else { 20 }",
                 expected: Some(10),
             },
+            Test {
+                input: "if (1 > 2) { 10 } else { 20 }",
+                expected: Some(20),
+            },
         ];
 
         for test in tests.iter() {
@@ -621,50 +634,45 @@ mod tests {
     fn test_eval_return_statements() {
         struct Test<'a> {
             input: &'a str,
-            expected: Option<i64>,
+            expected: Option<Object>,
         }
 
         let tests = vec![
             Test {
                 input: "return 10",
-                expected: Some(10),
+                expected: Some(Object::Integer(Integer { value: 10 })),
             },
             Test {
                 input: "return 10; 9;",
-                expected: Some(10),
+                expected: Some(Object::Integer(Integer { value: 10 })),
             },
             Test {
                 input: "return 2 * 5; 9;",
-                expected: Some(10),
+                expected: Some(Object::Integer(Integer { value: 10 })),
             },
             Test {
                 input: "9; return 2 * 5; 9;",
-                expected: Some(10),
+                expected: Some(Object::Integer(Integer { value: 10 })),
             },
             Test {
                 input: "
 if (true) {
     if (5 == 5) {
-        if (true) {
-            return 10;
-        }
-       return 10;
+        return 10;
     }
 
     return 1;
 }
-
-return 11;
 ",
-                expected: Some(10),
+                expected: Some(Object::Integer(Integer { value: 10 })),
             },
         ];
 
-        for test in tests.iter() {
+        for test in tests.into_iter() {
             let evaluated = test_eval(test.input).unwrap();
 
-            if let Object::Integer(integer) = evaluated {
-                assert!(test_integer_object(integer, test.expected));
+            if let Object::ReturnValue(return_value) = evaluated {
+                assert!(test_return_value_object(*return_value, test.expected));
             } else {
                 panic!("not an integer object: {}", evaluated.kind());
             }
@@ -712,8 +720,6 @@ if (10 > 1) {
 
     return 1;
 }
-
-return 11;
 ",
                 expected: "unknown operator: BOOLEAN + BOOLEAN",
             },

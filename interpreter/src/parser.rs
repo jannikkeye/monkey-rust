@@ -454,7 +454,9 @@ impl<'a> Parser<'a> {
 
                 self.next_token();
 
-                self.next_token();
+                if self.peek_token_is(TokenKind::EOF) {
+                    self.next_token();
+                }
 
                 Some(Statement::Return(return_statement))
             }
@@ -670,8 +672,6 @@ return 993322;
 
     #[test]
     fn test_string() {
-        use crate::token::{Token, TokenKind};
-
         let input = "let five = 5;
 let ten = 10;
 let nine = 9;
@@ -1158,7 +1158,7 @@ let nine = 9;
 
     #[test]
     fn test_if_else_expressions() {
-        let input = "if (x < y) { x } else { y }";
+        let input = "if (x < y) { return x; } else { return y; }";
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().expect("failed to parse program");
@@ -1177,7 +1177,7 @@ let nine = 9;
                             assert_eq!(consequence.token.kind, TokenKind::LBRACE);
 
                             match &consequence.statements[0] {
-                                Statement::Expression(statement) => match &statement.expression {
+                                Statement::Return(statement) => match &statement.return_value {
                                     Some(Expression::Ident(ident)) => {
                                         assert_eq!(ident.token.kind, TokenKind::IDENT);
                                         assert_eq!(ident.value, "x");
@@ -1188,11 +1188,13 @@ let nine = 9;
                             }
                         }
 
+                        assert!(if_expression.alternative.is_some());
+
                         if let Some(alternative) = &if_expression.alternative {
                             assert_eq!(alternative.token.kind, TokenKind::LBRACE);
 
                             match &alternative.statements[0] {
-                                Statement::Expression(statement) => match &statement.expression {
+                                Statement::Return(statement) => match &statement.return_value {
                                     Some(Expression::Ident(ident)) => {
                                         assert_eq!(ident.token.kind, TokenKind::IDENT);
                                         assert_eq!(ident.value, "y");
@@ -1307,12 +1309,6 @@ let nine = 9;
                         {
                             assert_eq!(func.token.kind, TokenKind::LPAREN);
                             assert_eq!(func.token.literal, "add");
-                        }
-
-                        for arg in call_expression.arguments.iter() {
-                            if let Some(expression) = arg.as_ref().map(|b| b.as_ref()) {
-                                println!("{:?}", expression);
-                            }
                         }
 
                         assert_eq!(call_expression.arguments.len(), 3);
