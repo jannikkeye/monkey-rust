@@ -18,10 +18,10 @@ impl Environment {
         }
     }
 
-    pub fn new_enclosed(outer: Environment) -> Self {
+    pub fn new_enclosed(outer: Rc<RefCell<Environment>>) -> Self {
         Environment {
             store: HashMap::new(),
-            outer: Some(Rc::new(RefCell::new(outer))),
+            outer: Some(outer),
         }
     }
 
@@ -33,17 +33,17 @@ impl Environment {
         key
     }
 
-    pub fn set(&mut self, name: &str, value: &Object) -> Option<Object> {
+    pub fn set(&mut self, name: &str, value: Object) -> Option<Object> {
         let key = self.make_key(name);
 
-        self.store.insert(key, *value)
+        self.store.insert(key, value)
     }
 
     pub fn get(&self, name: &str) -> Option<Object> {
         let value = self.store.get(name);
 
         match value {
-            Some(v) => Some(*v.clone()),
+            Some(v) => Some(v.clone()),
             None => match self.outer {
                 Some(ref env) => env.borrow().get(name),
                 None => None

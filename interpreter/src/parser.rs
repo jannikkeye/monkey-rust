@@ -961,8 +961,6 @@ let nine = 9;
 
     #[test]
     fn test_boolean_infix_expression() {
-        struct Test {}
-
         let inputs = vec!["true == true;"];
         let operators = vec!["=="];
         let token_kinds = vec![TokenKind::EQ];

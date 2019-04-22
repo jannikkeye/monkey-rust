@@ -232,15 +232,15 @@ impl Evaluator {
                     if let Some(expression) = &let_statement.value {
                         let value = self.eval(expression);
 
-                        return match &value {
+                        return match value.clone() {
                             Some(Object::Error(_)) => value,
                             None => None,
                             Some(v) => {
                                 if let Some(identifier) = &let_statement.name {
-                                    self.environment.borrow_mut().set(&identifier.value, &v);
+                                    self.environment.borrow_mut().set(&identifier.value, v);
                                 }
 
-                                value
+                                value.clone()
                             }
                         };
                     }
@@ -301,18 +301,17 @@ impl Evaluator {
                     Rc::clone(&self.environment),
                 )),
                 Expression::Call(call_expression) => {
-                    // let function_object = self.eval(*call_expression.function.clone()).unwrap();
+                    let function_object = self.eval(*call_expression.function.clone()).unwrap();
 
-                    // return match function_object {
-                    //     Object::Function(_, _, _) => {
-                    //         let args = self.eval_expressions(call_expression.arguments.clone());
-                    //         println!("{:#?}", args);
-                    //         self.apply_function(&function_object, args)
+                    return match function_object {
+                        Object::Function(_, _, _) => {
+                            let args = self.eval_expressions(call_expression.arguments.clone());
+                            self.apply_function(&function_object, args)
 
-                    //     },
-                    //     Object::Error(_) => Some(function_object),
-                    //     _ => None,
-                    // }
+                        },
+                        Object::Error(_) => Some(function_object),
+                        _ => None,
+                    }
                     // if let Some(call_function) = call_expression.clone().function {
                     //     let function = self.eval(*call_function, env.clone());
 
@@ -332,7 +331,7 @@ impl Evaluator {
                     //     return self.apply_function(function.as_ref().unwrap(), args);
                     // }
 
-                    None
+                    // None
                 }
             },
             NodeKind::Integer(integer_literal) => Some(self.eval_integer(integer_literal)),
@@ -342,36 +341,35 @@ impl Evaluator {
         }
     }
 
-    // fn apply_function(&mut self, function: &Object, args: Vec<Option<Object>>) -> Option<Object> {
-    //     if let Object::Function(params, body, env) = function {
-    //         let extended_env = self.extend_function_env(env, params, args);
-    //         let evaluated = self.eval(body);
+    fn apply_function(&mut self, function: &Object, args: Vec<Option<Object>>) -> Option<Object> {
+        if let Object::Function(params, body, function_env) = function {
+            if params.len() != args.len() {
+                return Some(Object::Error(format!("Wrong number of arguments supplied ({})/({})", args.len(), params.len())));
+            }
+            let old_env = Rc::clone(&self.environment);
+            let mut new_env = Environment::new_enclosed(Rc::clone(&function_env));
+            let zipped = params.into_iter().zip(args.into_iter());
 
-    //         return evaluated;
-    //     }
+            for (param, arg) in zipped {
+                new_env.set(&param.value, arg.unwrap());
+            }
+            
+            // use new environment for evaluating function body
+            self.environment = Rc::new(RefCell::new(new_env));
+            
+            let evaluated = self.eval(body);
 
-    //     Some(Object::Error(format!(
-    //         "not a function: {}",
-    //         function.kind()
-    //     )))
-    // }
+            // switch back to old enviroment afterwards
+            self.environment = old_env;
 
-    // fn extend_function_env(
-    //     &mut self,
-    //     function_env: &Environment,
-    //     function_params: &[Identifier],
-    //     args: Vec<Option<Object>>,
-    // ) -> Environment {
-    //     let mut env = Environment::new_enclosed(*function_env);
+            return evaluated;
+        }
 
-    //     for (index, param) in function_params.iter().enumerate() {
-    //         args[index]
-    //             .as_ref()
-    //             .and_then(|arg| env.set(&param.value, arg));
-    //     }
-
-    //     env
-    // }
+        Some(Object::Error(format!(
+            "not a function: {}",
+            function.kind()
+        )))
+    }
 
     fn eval_expressions(
         &mut self,
@@ -873,7 +871,7 @@ if (10 > 1) {
         let input = "fn(x) { x + 2; };";
         let evaluated = test_eval(input).expect("failed to evaluate");
 
-        if let Object::Function(parameters, body, env) = evaluated {
+        if let Object::Function(parameters, body, _) = evaluated {
             assert_eq!(parameters.len(), 1);
             assert_eq!(parameters[0].to_string(), "x");
 
@@ -897,30 +895,30 @@ if (10 > 1) {
                 input: "let identity = fn(x) { x; }; identity(5)",
                 expected: 5,
             },
-            // Test {
-            //     input: "let identity = fn(x) { return x; }; identity(5)",
-            //     expected: 5,
-            // },
-            // Test {
-            //     input: "let double = fn(x) { x * 2 }; double(5)",
-            //     expected: 10,
-            // },
-            // Test {
-            //     input: "let add = fn(x, y) { x + y }; add(5, 5);",
-            //     expected: 10,
-            // },
-            // Test {
-            //     input: "let add = fn(x, y) { x + y }; add(5, 5);",
-            //     expected: 10,
-            // },
-            // Test {
-            //     input: "let add = fn(x, y) { x + y }; add(5 + 5, add(5, 5));",
-            //     expected: 20,
-            // },
-            // Test {
-            //     input: "fn(x) { x; }(5)",
-            //     expected: 5,
-            // },
+            Test {
+                input: "let identity = fn(x) { x; }; identity(5)",
+                expected: 5,
+            },
+            Test {
+                input: "let double = fn(x) { x * 2 }; double(5)",
+                expected: 10,
+            },
+            Test {
+                input: "let add = fn(x, y) { x + y }; add(5, 5);",
+                expected: 10,
+            },
+            Test {
+                input: "let add = fn(x, y) { x + y }; add(5, 5);",
+                expected: 10,
+            },
+            Test {
+                input: "let add = fn(x, y) { x + y }; add(5 + 5, add(5, 5));",
+                expected: 20,
+            },
+            Test {
+                input: "fn(x) { x; }(5)",
+                expected: 5,
+            },
         ];
 
         for test in tests.iter() {
