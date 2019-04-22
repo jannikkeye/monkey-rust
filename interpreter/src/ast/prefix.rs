@@ -2,7 +2,7 @@ use super::expression::Expression;
 use super::{Node, NodeKind};
 use crate::token::Token;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct Prefix {
     pub token: Token,
     pub operator: String,

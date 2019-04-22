@@ -3,7 +3,7 @@ use std::fmt;
 use super::{Node, NodeKind};
 use crate::token::Token;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct Boolean {
     pub token: Token,
     pub value: bool,

@@ -1,7 +1,7 @@
 use super::{Node, NodeKind};
 use crate::token::Token;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct IntegerLiteral {
     pub token: Token,
     pub value: i64,

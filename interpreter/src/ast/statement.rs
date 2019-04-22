@@ -1,8 +1,8 @@
 use super::{expression::Expression, identifier::Identifier, Node, NodeKind};
-use crate::token::{Token};
+use crate::token::Token;
 use std::fmt;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
@@ -10,26 +10,26 @@ pub enum Statement {
     Block(BlockStatement),
 }
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct LetStatement {
     pub token: Token,
     pub name: Option<Identifier>,
     pub value: Option<Expression>,
 }
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct ReturnStatement {
     pub token: Token,
     pub return_value: Option<Expression>,
 }
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct ExpressionStatement {
     pub token: Token,
     pub expression: Option<Expression>,
 }
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct BlockStatement {
     pub token: Token,
     pub statements: Vec<Statement>,
@@ -73,6 +73,16 @@ impl LetStatement {
             name: None,
             value: None,
         }
+    }
+}
+
+impl Node for BlockStatement {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Block(self)
     }
 }
 

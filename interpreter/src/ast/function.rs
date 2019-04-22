@@ -4,10 +4,10 @@ use super::{Node, NodeKind};
 use crate::token::Token;
 use std::fmt;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct FunctionLiteral {
     pub token: Token,
-    pub paramters: Vec<Identifier>,
+    pub parameters: Vec<Identifier>,
     pub body: Option<BlockStatement>,
 }
 
@@ -15,7 +15,7 @@ impl FunctionLiteral {
     pub fn new(token: &Token) -> Self {
         FunctionLiteral {
             token: token.clone(),
-            paramters: vec![],
+            parameters: vec![],
             body: None,
         }
     }
@@ -33,7 +33,7 @@ impl Node for FunctionLiteral {
 
 impl PartialEq for FunctionLiteral {
     fn eq(&self, other: &FunctionLiteral) -> bool {
-        self.token == other.token && self.paramters == other.paramters && self.body == other.body
+        self.token == other.token && self.parameters == other.parameters && self.body == other.body
     }
 }
 
@@ -41,9 +41,9 @@ impl fmt::Display for FunctionLiteral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut string = String::new();
         let parameters = self
-            .paramters
+            .parameters
             .iter()
-            .map(|v| v.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<String>>();
 
         string.push_str("(");

@@ -1,6 +1,6 @@
 use crate::evaluator;
 use crate::lexer;
-use crate::object::{Object, ObjectVariant};
+use crate::object::Object;
 use crate::parser;
 use std::io::{stdin, stdout, Write};
 
@@ -36,7 +36,6 @@ WELCOME TO THE MONKEY PROGRAMMING LANGUAGE! HAVE FUN, HUMAN!
 
             continue;
         }
-
         let evaluated = evaluator.eval(program);
 
         if let Some(eval) = evaluated {
@@ -45,7 +44,7 @@ WELCOME TO THE MONKEY PROGRAMMING LANGUAGE! HAVE FUN, HUMAN!
                 println!("evaluation error:");
             }
 
-            println!("{}", eval.inspect());
+            println!("{}", eval);
             println!("\n");
         }
     }

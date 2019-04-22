@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            function_literal.paramters = self.parse_function_parameters();
+            function_literal.parameters = self.parse_function_parameters();
 
             if !self.expect_peek(TokenKind::LBRACE) {
                 return None;
@@ -181,9 +181,8 @@ impl<'a> Parser<'a> {
 
             self.next_token();
 
-            if_expression.condition = Some(Box::new(
-                self.parse_expression(Precedence::LOWEST).unwrap(),
-            ));
+            if_expression.condition =
+                Some(Box::new(self.parse_expression(Precedence::LOWEST).unwrap()));
 
             if !self.expect_peek(TokenKind::RPAREN) {
                 return None;
@@ -238,7 +237,7 @@ impl<'a> Parser<'a> {
 
     fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
         if let Some(token) = &self.current_token {
-            let mut expression = Call::new(token, Some(Box::new(function)));
+            let mut expression = Call::new(token, Box::new(function));
 
             if let Some(arguments) = self.parse_call_arguments() {
                 expression.arguments = arguments;
@@ -250,7 +249,7 @@ impl<'a> Parser<'a> {
         None
     }
 
-    fn parse_call_arguments(&mut self) -> Option<Vec<Option<Box<Expression>>>> {
+    fn parse_call_arguments(&mut self) -> Option<Vec<Box<Expression>>> {
         let mut args = vec![];
 
         if self.peek_token_is(TokenKind::RPAREN) {
@@ -262,7 +261,7 @@ impl<'a> Parser<'a> {
         self.next_token();
 
         if let Some(expression) = self.parse_expression(Precedence::LOWEST) {
-            args.push(Some(Box::new(expression)));
+            args.push(Box::new(expression));
         }
 
         while self.peek_token_is(TokenKind::COMMA) {
@@ -270,7 +269,7 @@ impl<'a> Parser<'a> {
             self.next_token();
 
             if let Some(expression) = self.parse_expression(Precedence::LOWEST) {
-                args.push(Some(Box::new(expression)));
+                args.push(Box::new(expression));
             }
         }
 
@@ -566,6 +565,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::Node;
 
     #[test]
     fn test_let_statements() {
@@ -1083,7 +1083,7 @@ let nine = 9;
     #[test]
     fn test_boolean_expression() {
         let input = "let boolean = true;";
-        let mut lexer = Lexer::new(input);
+        let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
 
@@ -1230,11 +1230,11 @@ let nine = 9;
                         assert_eq!(function_expression.token.kind, TokenKind::FUNCTION);
 
                         assert_eq!(
-                            function_expression.paramters[0].token,
+                            function_expression.parameters[0].token,
                             Token::from_literal("x")
                         );
                         assert_eq!(
-                            function_expression.paramters[1].token,
+                            function_expression.parameters[1].token,
                             Token::from_literal("y")
                         );
 
@@ -1303,13 +1303,7 @@ let nine = 9;
                 match &statement.expression {
                     Some(Expression::Call(call_expression)) => {
                         assert_eq!(call_expression.token.kind, TokenKind::LPAREN);
-
-                        if let Some(Expression::Function(func)) =
-                            call_expression.function.as_ref().map(|b| b.as_ref())
-                        {
-                            assert_eq!(func.token.kind, TokenKind::LPAREN);
-                            assert_eq!(func.token.literal, "add");
-                        }
+                        assert_eq!(call_expression.function.token_literal(), "add");
 
                         assert_eq!(call_expression.arguments.len(), 3);
                     }

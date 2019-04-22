@@ -5,7 +5,7 @@ use crate::token::Token;
 use std::boxed::Box;
 use std::fmt;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct If {
     pub token: Token,
     pub condition: Option<Box<Expression>>,
@@ -49,7 +49,7 @@ impl fmt::Display for If {
 
         string.push_str("if");
 
-        if let Some(condition) = self.condition.as_ref().map(|c| c.as_ref()) {
+        if let Some(condition) = self.condition.as_ref().map(std::convert::AsRef::as_ref) {
             string.push_str(&condition.to_string());
         }
 

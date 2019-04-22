@@ -2,7 +2,7 @@ use super::expression::Expression;
 use super::{Node, NodeKind};
 use crate::token::Token;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Infix {
     pub token: Token,
     pub left: std::boxed::Box<Option<Expression>>,

@@ -3,15 +3,15 @@ use super::{Node, NodeKind};
 use crate::token::Token;
 use std::fmt;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct Call {
     pub token: Token,
-    pub function: Option<Box<Expression>>,
-    pub arguments: Vec<Option<Box<Expression>>>,
+    pub function: Box<Expression>,
+    pub arguments: Vec<Box<Expression>>,
 }
 
 impl Call {
-    pub fn new(token: &Token, function: Option<Box<Expression>>) -> Self {
+    pub fn new(token: &Token, function: Box<Expression>) -> Self {
         Call {
             token: token.clone(),
             function,
@@ -44,16 +44,12 @@ impl fmt::Display for Call {
         let mut arguments: Vec<String> = vec![];
 
         for argument in self.arguments.iter() {
-            if let Some(arg) = argument {
-                let str_rep = arg.to_string();
+            let str_rep = argument.to_string();
 
-                arguments.push(str_rep);
-            }
+            arguments.push(str_rep);
         }
 
-        if let Some(func) = &self.function {
-            string.push_str(&func.to_string());
-        }
+        string.push_str(&self.function.to_string());
 
         string.push_str("(");
         string.push_str(&arguments.join(", "));

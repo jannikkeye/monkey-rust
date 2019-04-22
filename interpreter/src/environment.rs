@@ -1,15 +1,27 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::object::Object;
 use std::collections::HashMap;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct Environment {
     store: HashMap<String, Object>,
+    outer: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Environment {
             store: HashMap::new(),
+            outer: None,
+        }
+    }
+
+    pub fn new_enclosed(outer: Environment) -> Self {
+        Environment {
+            store: HashMap::new(),
+            outer: Some(Rc::new(RefCell::new(outer))),
         }
     }
 
@@ -24,17 +36,19 @@ impl Environment {
     pub fn set(&mut self, name: &str, value: &Object) -> Option<Object> {
         let key = self.make_key(name);
 
-        self.store.insert(key, value.clone())
+        self.store.insert(key, *value)
     }
 
     pub fn get(&self, name: &str) -> Option<Object> {
         let value = self.store.get(name);
 
-        if value.is_some() {
-            return Some(value.unwrap().clone());
+        match value {
+            Some(v) => Some(*v.clone()),
+            None => match self.outer {
+                Some(ref env) => env.borrow().get(name),
+                None => None
+            }
         }
-
-        None
     }
 
     pub fn remove(&mut self, name: &str) {

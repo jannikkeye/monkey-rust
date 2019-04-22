@@ -9,7 +9,7 @@ use super::prefix::Prefix;
 use super::{Node, NodeKind};
 use std::fmt;
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub enum Expression {
     Ident(Identifier),
     Int(IntegerLiteral),
