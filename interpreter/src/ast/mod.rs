@@ -9,6 +9,7 @@ pub mod int;
 pub mod prefix;
 pub mod program;
 pub mod statement;
+pub mod string;
 
 #[derive(Debug)]
 pub enum NodeKind<'a> {
@@ -24,6 +25,7 @@ pub enum NodeKind<'a> {
     Function(&'a function::FunctionLiteral),
     Call(&'a call::Call),
     Block(&'a statement::BlockStatement),
+    StringLiteral(&'a string::StringLiteral),
 }
 
 pub trait Node {

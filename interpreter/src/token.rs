@@ -27,6 +27,7 @@ pub enum TokenKind {
     FALSE,
     EQ,
     NEQ,
+    STRING,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

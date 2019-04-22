@@ -4,6 +4,7 @@ use crate::ast::{
     expression::Expression,
     function::FunctionLiteral,
     identifier::Identifier,
+    string::StringLiteral,
     if_expression::If,
     infix::Infix,
     int::IntegerLiteral,
@@ -333,6 +334,7 @@ impl<'a> Parser<'a> {
                 TokenKind::INT => {
                     Some(Expression::Int(IntegerLiteral::new(&token, &token.literal)))
                 }
+                TokenKind::STRING => Some(Expression::Str(StringLiteral::new(&token, &token.literal))),
                 TokenKind::TRUE => Some(Expression::Bool(Boolean::new(&token, true))),
                 TokenKind::FALSE => Some(Expression::Bool(Boolean::new(&token, false))),
                 _ => None,
@@ -394,6 +396,7 @@ impl<'a> Parser<'a> {
             if let Some(peek_token) = &self.peek_token {
                 if token.kind == TokenKind::IDENT
                     || token.kind == TokenKind::INT
+                    || token.kind == TokenKind::STRING
                     || token.kind == TokenKind::TRUE
                     || token.kind == TokenKind::FALSE
                     || token.kind == TokenKind::RPAREN
@@ -1309,6 +1312,26 @@ let nine = 9;
                 }
             }
             _ => panic!("not an expression statement"),
+        }
+    }
+
+    #[test]
+    fn test_string_literal() {
+        let input = r#""hello world""#;
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().expect("failed to parse program");
+
+        let stmt = &program.statements[0];
+
+        if let Statement::Expression(expression) = stmt {
+            if let Some(Expression::Str(string_literal)) = &expression.expression {
+                assert_eq!(string_literal.value, "hello world");
+            } else {
+                panic!("not a string expression")
+            }
+        } else {
+            panic!("not an expression");
         }
     }
 }

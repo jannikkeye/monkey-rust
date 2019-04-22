@@ -1,6 +1,6 @@
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 use crate::ast::identifier::Identifier;
 use crate::ast::statement::BlockStatement;
@@ -12,10 +12,12 @@ pub const NULL_OBJ: &str = "NULL";
 pub const RETURN_VALUE_OBJ: &str = "RETURN_VALUE";
 pub const ERROR_OBJ: &str = "ERROR";
 pub const FUNCTION_OBJ: &str = "FUNCTION";
+pub const STRING_OBJ : &str = "STRING";
 
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub enum Object {
     Integer(i64),
+    Str(String),
     Boolean(bool),
     Null,
     ReturnValue(Box<Object>),
@@ -48,6 +50,10 @@ impl Object {
         self.kind() == FUNCTION_OBJ
     }
 
+    pub fn is_string(&self) -> bool {
+        self.kind() == STRING_OBJ
+    }
+
     pub fn kind(&self) -> &str {
         match self {
             Object::Integer(_) => INTEGER_OBJ,
@@ -56,6 +62,7 @@ impl Object {
             Object::ReturnValue(_) => RETURN_VALUE_OBJ,
             Object::Error(_) => ERROR_OBJ,
             Object::Function(_, _, _) => FUNCTION_OBJ,
+            Object::Str(_) => STRING_OBJ,
         }
     }
 }
@@ -87,7 +94,8 @@ impl fmt::Display for Object {
                     string.push_str("\n}");
 
                     string
-                }
+                },
+                Object::Str(s) => s.to_string(),
             }
         )
     }

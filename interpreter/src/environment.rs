@@ -46,8 +46,8 @@ impl Environment {
             Some(v) => Some(v.clone()),
             None => match self.outer {
                 Some(ref env) => env.borrow().get(name),
-                None => None
-            }
+                None => None,
+            },
         }
     }
 

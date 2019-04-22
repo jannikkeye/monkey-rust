@@ -34,6 +34,14 @@ impl<'a> Lexer<'a> {
         byte == b' ' || byte == b'\t' || byte == b'\n' || byte == b'\r'
     }
 
+    fn is_double_quote(&self, byte: u8) -> bool {
+        byte == b'"'
+    }
+
+    fn is_escape_char(&self, byte: u8) -> bool {
+        byte == b'\\'
+    }
+
     fn read_char(&mut self) -> u8 {
         self.position = self.read_position;
         self.read_position = self.position + 1;
@@ -79,6 +87,26 @@ impl<'a> Lexer<'a> {
             self.read_char();
         }
     }
+
+    fn read_string(&mut self) -> Vec<u8> {
+        let mut bytes: Vec<u8> = vec![];
+
+        self.read_char();
+
+        while !self.is_double_quote(self.peek_char()) && self.peek_char() != 0 {
+            if self.is_escape_char(self.peek_char()) {
+                self.read_char();
+            }
+
+            bytes.push(self.read_char());
+        }
+
+        if self.is_double_quote(self.peek_char()) {
+            self.read_char();
+        }
+
+        bytes
+    }
 }
 
 impl<'a> Iterator for Lexer<'a> {
@@ -98,7 +126,10 @@ impl<'a> Iterator for Lexer<'a> {
 
         let is_letter = self.is_letter(peaked_char);
         let is_number = self.is_number(peaked_char);
-        let bytes = if is_letter {
+        let is_double_quote = self.is_double_quote(peaked_char);
+        let bytes = if is_double_quote {
+            self.read_string()
+        } else if is_letter {
             self.read_letters()
         } else if is_number {
             self.read_numbers()
@@ -124,6 +155,13 @@ impl<'a> Iterator for Lexer<'a> {
         if is_number {
             return Some(Token::new(
                 TokenKind::INT,
+                String::from_utf8(bytes).unwrap().as_ref(),
+            ));
+        }
+
+        if is_double_quote {
+            return Some(Token::new(
+                TokenKind::STRING,
                 String::from_utf8(bytes).unwrap().as_ref(),
             ));
         }
@@ -157,7 +195,7 @@ mod tests {
     fn next_token() {
         use crate::token::{Token, TokenKind};
 
-        let input = "let five = 5;
+        let input = r#"let five = 5;
 let ten = 10;
 let add = fn(x, y) {
     x + y;
@@ -173,7 +211,10 @@ if (5 < 10) {
 
 10 == 10;
 10 != 9;
-   ";
+"foobar"
+"foo bar"
+"\"foo\" bar
+   "#;
         let matches: Vec<Token> = vec![
             Token::new(TokenKind::LET, "let"),
             Token::new(TokenKind::IDENT, "five"),
@@ -248,6 +289,9 @@ if (5 < 10) {
             Token::new(TokenKind::NEQ, "!="),
             Token::new(TokenKind::INT, "9"),
             Token::new(TokenKind::SEMICOLON, ";"),
+            Token::new(TokenKind::STRING, "foobar"),
+            Token::new(TokenKind::STRING, "foo bar"),
+            Token::new(TokenKind::STRING, "hello \"world\""),
             Token::new(TokenKind::EOF, ""),
         ];
 
