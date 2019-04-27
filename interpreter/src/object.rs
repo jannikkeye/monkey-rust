@@ -15,6 +15,27 @@ pub const FUNCTION_OBJ: &'static str = "FUNCTION";
 pub const STRING_OBJ : &'static str = "STRING";
 pub const BUILTIN_OBJ: &'static str = "BUILTIN";
 
+pub type BuiltInFunctionSig = fn(&[Option<Object>]) -> Object;
+
+#[derive(Clone)]
+pub struct BuiltInFunction {
+    pub func: BuiltInFunctionSig,
+}
+
+impl fmt::Debug for BuiltInFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "builtin function")
+    }
+}
+
+impl PartialEq for BuiltInFunction {
+    fn eq(&self, other: &BuiltInFunction) -> bool {
+        self.func as usize == other.func as usize
+    }
+}
+
+impl Eq for BuiltInFunction {}
+
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub enum Object {
     Integer(i64),
@@ -24,8 +45,14 @@ pub enum Object {
     ReturnValue(Box<Object>),
     Error(String),
     Function(Vec<Identifier>, BlockStatement, Rc<RefCell<Environment>>),
-    BuiltInFunction(Vec<Identifier>),
+    BuiltInFunction(BuiltInFunction),
 }
+
+// impl<T> fmt::Debug for BuiltInFunction<T> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "builtin function")
+//     }
+// }
 
 impl Object {
     pub fn is_error(&self) -> bool {

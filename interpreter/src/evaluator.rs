@@ -10,6 +10,7 @@ use crate::ast::{
 };
 use crate::environment::Environment;
 use crate::object::{Object, BOOLEAN_OBJ, STRING_OBJ};
+use crate::builtins::BUILTINS;
 
 #[derive(Default)]
 pub struct Evaluator {
@@ -237,16 +238,19 @@ impl Evaluator {
     }
 
     fn eval_identifier(&self, identifier: &Identifier) -> Option<Object> {
-        let value = self.environment.borrow().get(&identifier.value);
-
-        if value.is_none() {
-            return Some(Object::Error(format!(
-                "identifier not found: {}",
-                identifier.value
-            )));
+        if let Some(value) = self.environment.borrow().get(&identifier.value) {
+            return Some(value);
         }
 
-        value
+
+        if let Some((_, built_in)) = BUILTINS.iter().find(|(key, _)| key.as_ref() == identifier.value) {
+            return Some(built_in.clone());
+        }
+
+        return Some(Object::Error(format!(
+            "identifier not found: {}",
+            identifier.value
+        )));
     }
 
     pub fn eval(&mut self, node: impl Node) -> Option<Object> {
@@ -341,10 +345,10 @@ impl Evaluator {
                     let function_object = self.eval(*call_expression.function.clone()).unwrap();
 
                     return match function_object {
-                        Object::Function(_, _, _) => {
+                        Object::Function(_, _, _) | Object::BuiltInFunction(_) => {
                             let args = self.eval_expressions(call_expression.arguments.clone());
                             self.apply_function(&function_object, args)
-                        }
+                        },
                         Object::Error(_) => Some(function_object),
                         _ => None,
                     };
@@ -388,6 +392,10 @@ impl Evaluator {
             self.environment = old_env;
 
             return evaluated;
+        }
+
+        if let Object::BuiltInFunction(built_in) = function {
+            return Some((built_in.func)(&args));
         }
 
         Some(Object::Error(format!(
@@ -598,4 +606,10 @@ if (10 > 1) {
         compare(r#""hello \"world\"""#, Object::Str(String::from("hello \"world\"")));
     }
 
+    #[test]
+    fn test_eval_built_in_functions() {
+        compare(r#"len("")"#, Object::Integer(0));
+        compare(r#"len("four")"#, Object::Integer(4));
+        compare(r#"len("hello world")"#, Object::Integer(11));
+    }
 }
