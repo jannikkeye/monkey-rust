@@ -6,13 +6,14 @@ use crate::ast::identifier::Identifier;
 use crate::ast::statement::BlockStatement;
 use crate::environment::Environment;
 
-pub const INTEGER_OBJ: &str = "INTEGER";
-pub const BOOLEAN_OBJ: &str = "BOOLEAN";
-pub const NULL_OBJ: &str = "NULL";
+pub const INTEGER_OBJ: &'static str = "INTEGER";
+pub const BOOLEAN_OBJ: &'static str = "BOOLEAN";
+pub const NULL_OBJ: &'static str = "NULL";
 pub const RETURN_VALUE_OBJ: &str = "RETURN_VALUE";
-pub const ERROR_OBJ: &str = "ERROR";
-pub const FUNCTION_OBJ: &str = "FUNCTION";
-pub const STRING_OBJ : &str = "STRING";
+pub const ERROR_OBJ: &'static str = "ERROR";
+pub const FUNCTION_OBJ: &'static str = "FUNCTION";
+pub const STRING_OBJ : &'static str = "STRING";
+pub const BUILTIN_OBJ: &'static str = "BUILTIN";
 
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub enum Object {
@@ -23,6 +24,7 @@ pub enum Object {
     ReturnValue(Box<Object>),
     Error(String),
     Function(Vec<Identifier>, BlockStatement, Rc<RefCell<Environment>>),
+    BuiltInFunction(Vec<Identifier>),
 }
 
 impl Object {
@@ -63,6 +65,7 @@ impl Object {
             Object::Error(_) => ERROR_OBJ,
             Object::Function(_, _, _) => FUNCTION_OBJ,
             Object::Str(_) => STRING_OBJ,
+            Object::BuiltInFunction(_) => BUILTIN_OBJ,
         }
     }
 }
@@ -96,6 +99,7 @@ impl fmt::Display for Object {
                     string
                 },
                 Object::Str(s) => s.to_string(),
+                Object::BuiltInFunction(_) => format!("{}", "builtin function"),
             }
         )
     }

@@ -9,7 +9,7 @@ use crate::ast::{
     Node, NodeKind,
 };
 use crate::environment::Environment;
-use crate::object::{Object, BOOLEAN_OBJ};
+use crate::object::{Object, BOOLEAN_OBJ, STRING_OBJ};
 
 #[derive(Default)]
 pub struct Evaluator {
@@ -169,7 +169,7 @@ impl Evaluator {
             }
             _ => Object::Error(format!(
                 "unknown operator: {} {} {}",
-                BOOLEAN_OBJ, operator, BOOLEAN_OBJ,
+                STRING_OBJ, operator, STRING_OBJ,
             )),
         }
     }
@@ -419,7 +419,7 @@ impl Evaluator {
 mod tests {
     use crate::evaluator::Evaluator;
     use crate::lexer::Lexer;
-    use crate::object::{Object, INTEGER_OBJ, RETURN_VALUE_OBJ};
+    use crate::object::{Object};
     use crate::parser::Parser;
 
     fn compare(input: &str, expected: Object) {
@@ -453,331 +453,76 @@ mod tests {
         }
     }
 
-    fn test_integer_object(obj: Object, expected: Option<i64>) {
-        match expected {
-            Some(value) => {
-                assert_eq!(obj.kind(), INTEGER_OBJ);
-
-                if let Object::Integer(integer) = obj {
-                    assert_eq!(integer, value);
-                };
-            }
-            None => assert!(obj.is_null()),
-        };
-    }
-
-    fn test_return_value_object(obj: Object, expected: Option<Object>) {
-        match expected {
-            Some(value) => {
-                assert_eq!(obj.kind(), RETURN_VALUE_OBJ);
-
-                if let Object::ReturnValue(rv) = obj {
-                    assert_eq!(rv, Box::new(value));
-                }
-            }
-            None => assert!(obj.is_null()),
-        }
-    }
-
-    fn test_boolean_object(obj: Object, expected: bool) -> bool {
-        obj.is_boolean()
-            && match obj {
-                Object::Boolean(boolean) => boolean == expected,
-                _ => false,
-            }
-    }
-
-    fn test_error_object(obj: Object, expected: &str) {
-        assert!(obj.is_error(), format!("{} is not an error", obj.kind()));
-
-        match obj {
-            Object::Error(message) => assert_eq!(message, expected),
-            _ => panic!("{} is not an error", obj.kind()),
-        }
-    }
-
     #[test]
     fn test_eval_integer_expression() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: i64,
-        }
-
-        let tests = vec![
-            Test {
-                input: "32",
-                expected: 32,
-            },
-            Test {
-                input: "10",
-                expected: 10,
-            },
-            Test {
-                input: "-32",
-                expected: -32,
-            },
-            Test {
-                input: "-10",
-                expected: -10,
-            },
-            Test {
-                input: "5 + 5 + 5 + 5 - 10",
-                expected: 10,
-            },
-            Test {
-                input: "2 * 2 * 2 * 2 * 2",
-                expected: 32,
-            },
-            Test {
-                input: "-50 + 100 + -50",
-                expected: 0,
-            },
-            Test {
-                input: "5 * 2 + 10",
-                expected: 20,
-            },
-            Test {
-                input: "5 + 2 * 10",
-                expected: 25,
-            },
-            Test {
-                input: "20 + 2 * -10",
-                expected: 0,
-            },
-            Test {
-                input: "50 / 2 * 2 + 10",
-                expected: 60,
-            },
-            Test {
-                input: "2 * (5 + 10)",
-                expected: 30,
-            },
-            Test {
-                input: "3 * (3 * 3) + 10",
-                expected: 37,
-            },
-            Test {
-                input: "(5 + 10 * 2 + 15 / 3) * 2 + -10",
-                expected: 50,
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            test_integer_object(evaluated, Some(test.expected));
-        }
+        compare("32", Object::Integer(32));
+        compare("10", Object::Integer(10));
+        compare("-32", Object::Integer(-32));
+        compare("-10", Object::Integer(-10));
+        compare("5 + 5 + 5 + 5 - 10", Object::Integer(10));
+        compare("2 * 2 * 2 * 2 * 2", Object::Integer(32));
+        compare("-50 + 100 + -50", Object::Integer(0));
+        compare("5 * 2 + 10", Object::Integer(20));
+        compare("5 + 2 * 10", Object::Integer(25));
+        compare("20 + 2 * -10", Object::Integer(0));
+        compare("50 / 2 * 2 + 10", Object::Integer(60));
+        compare("2 * (5 + 10)", Object::Integer(30));
+        compare("3 * (3 * 3) + 10", Object::Integer(37));
+        compare("(5 + 10 * 2 + 15 / 3) * 2 + -10", Object::Integer(50));
     }
 
     #[test]
     fn test_eval_boolean_expression() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: bool,
-        }
-
-        let tests = vec![
-            Test {
-                input: "true",
-                expected: true,
-            },
-            Test {
-                input: "false",
-                expected: false,
-            },
-            Test {
-                input: "1 < 2",
-                expected: true,
-            },
-            Test {
-                input: "1 > 2",
-                expected: false,
-            },
-            Test {
-                input: "1 < 1",
-                expected: false,
-            },
-            Test {
-                input: "1 > 1",
-                expected: false,
-            },
-            Test {
-                input: "1 == 1",
-                expected: true,
-            },
-            Test {
-                input: "1 != 1",
-                expected: false,
-            },
-            Test {
-                input: "1 == 2",
-                expected: false,
-            },
-            Test {
-                input: "1 != 2",
-                expected: true,
-            },
-            Test {
-                input: "true == true",
-                expected: true,
-            },
-            Test {
-                input: "false == false",
-                expected: true,
-            },
-            Test {
-                input: "true == false",
-                expected: false,
-            },
-            Test {
-                input: "true != false",
-                expected: true,
-            },
-            Test {
-                input: "false != true",
-                expected: true,
-            },
-            Test {
-                input: "(1 < 2) == true",
-                expected: true,
-            },
-            Test {
-                input: "(1 < 2) == false",
-                expected: false,
-            },
-            Test {
-                input: "(1 > 2) == true",
-                expected: false,
-            },
-            Test {
-                input: "(1 > 2) == false",
-                expected: true,
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            assert!(test_boolean_object(evaluated, test.expected));
-        }
+        compare("true", Object::Boolean(true));
+        compare("false", Object::Boolean(false));
+        compare("1 < 2", Object::Boolean(true));
+        compare("1 > 2", Object::Boolean(false));
+        compare("1 < 1", Object::Boolean(false));
+        compare("1 > 1", Object::Boolean(false));
+        compare("1 == 1", Object::Boolean(true));
+        compare("1 != 1", Object::Boolean(false));
+        compare("1 == 2", Object::Boolean(false));
+        compare("1 != 2", Object::Boolean(true));
+        compare("true == true", Object::Boolean(true));
+        compare("false == false", Object::Boolean(true));
+        compare("true == false", Object::Boolean(false));
+        compare("true != false", Object::Boolean(true));
+        compare("false != true", Object::Boolean(true));
+        compare("(1 < 2) == true", Object::Boolean(true));
+        compare("(1 < 2) == false", Object::Boolean(false));
+        compare("(1 > 2) == true", Object::Boolean(false));
+        compare("(1 > 2) == false", Object::Boolean(true));
     }
 
     #[test]
     fn test_bang_operator() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: bool,
-        }
-
-        let tests = vec![
-            Test {
-                input: "!true",
-                expected: false,
-            },
-            Test {
-                input: "!false",
-                expected: true,
-            },
-            Test {
-                input: "!5",
-                expected: false,
-            },
-            Test {
-                input: "!!true",
-                expected: true,
-            },
-            Test {
-                input: "!!false",
-                expected: false,
-            },
-            Test {
-                input: "!!5",
-                expected: true,
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            assert!(test_boolean_object(evaluated, test.expected));
-        }
+        compare("!true", Object::Boolean(false));
+        compare("!false", Object::Boolean(true));
+        compare("!5", Object::Boolean(false));
+        compare("!!true", Object::Boolean(true));
+        compare("!!false", Object::Boolean(false));
+        compare("!!5", Object::Boolean(true));
     }
 
     #[test]
     fn test_if_else_expressions() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: Option<i64>,
-        }
-
-        let tests = vec![
-            Test {
-                input: "if (true) { 10 }",
-                expected: Some(10),
-            },
-            Test {
-                input: "if (false) { 10 }",
-                expected: None,
-            },
-            Test {
-                input: "if (1) { 10 }",
-                expected: Some(10),
-            },
-            Test {
-                input: "if (1 < 2) { 10 }",
-                expected: Some(10),
-            },
-            Test {
-                input: "if (1 > 2) { 10 }",
-                expected: None,
-            },
-            Test {
-                input: "if (1 > 2) { 10 } else { 20 }",
-                expected: Some(20),
-            },
-            Test {
-                input: "if (1 < 2) { 10 } else { 20 }",
-                expected: Some(10),
-            },
-            Test {
-                input: "if (1 > 2) { 10 } else { 20 }",
-                expected: Some(20),
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            test_integer_object(evaluated, test.expected);
-        }
+        compare("if (true) { 10 }", Object::Integer(10));
+        compare("if (false) { 10 }", Object::Null);
+        compare("if (1) { 10 }", Object::Integer(10));
+        compare("if (1 < 2) { 10 }", Object::Integer(10));
+        compare("if (1 > 2) { 10 }", Object::Null);
+        compare("if (1 > 2) { 10 } else { 20 }", Object::Integer(20));
+        compare("if (1 < 2) { 10 } else { 20 }", Object::Integer(10));
+        compare("if (1 > 2) { 10 } else { 20 }", Object::Integer(20));
     }
 
     #[test]
     fn test_eval_return_statements() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: Option<Object>,
-        }
-
-        let tests = vec![
-            Test {
-                input: "return 10",
-                expected: Some(Object::Integer(10)),
-            },
-            Test {
-                input: "return 10; 9;",
-                expected: Some(Object::Integer(10)),
-            },
-            Test {
-                input: "return 2 * 5; 9;",
-                expected: Some(Object::Integer(10)),
-            },
-            Test {
-                input: "9; return 2 * 5; 9;",
-                expected: Some(Object::Integer(10)),
-            },
-            Test {
-                input: "
+        compare("return 10", Object::ReturnValue(Box::new(Object::Integer(10))));
+        compare("return 10; 9;", Object::ReturnValue(Box::new(Object::Integer(10))));
+        compare("return 2 * 5; 9;", Object::ReturnValue(Box::new(Object::Integer(10))));
+        compare("9; return 2 * 5; 9;", Object::ReturnValue(Box::new(Object::Integer(10))));
+        compare("
 if (true) {
     if (5 == 5) {
         return 10;
@@ -785,118 +530,38 @@ if (true) {
 
     return 1;
 }
-",
-                expected: Some(Object::Integer(10)),
-            },
-        ];
-
-        for test in tests.into_iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            test_return_value_object(evaluated, test.expected);
-        }
+", Object::ReturnValue(Box::new(Object::Integer(10))));
     }
 
     #[test]
     fn test_error_handling() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: &'a str,
-        }
-
-        let tests = vec![
-            Test {
-                input: "5 + true",
-                expected: "type mismatch: INTEGER + BOOLEAN",
-            },
-            Test {
-                input: "5 + true; 5;",
-                expected: "type mismatch: INTEGER + BOOLEAN",
-            },
-            Test {
-                input: "-true",
-                expected: "unknown operator: -BOOLEAN",
-            },
-            Test {
-                input: "true + false;",
-                expected: "unknown operator: BOOLEAN + BOOLEAN",
-            },
-            Test {
-                input: "5; true + false; 5",
-                expected: "unknown operator: BOOLEAN + BOOLEAN",
-            },
-            Test {
-                input: "if (10 > 1) { true + false }",
-                expected: "unknown operator: BOOLEAN + BOOLEAN",
-            },
-            Test {
-                input: "
+        compare("5 + true", Object::Error(format!("{}", "type mismatch: INTEGER + BOOLEAN")));
+        compare("5 + true; 5;", Object::Error(format!("{}", "type mismatch: INTEGER + BOOLEAN")));
+        compare("-true", Object::Error(format!("{}", "unknown operator: -BOOLEAN")));
+        compare("true + false;", Object::Error(format!("{}", "unknown operator: BOOLEAN + BOOLEAN")));
+        compare("5; true + false; 5", Object::Error(format!("{}", "unknown operator: BOOLEAN + BOOLEAN")));
+        compare("if (10 > 1) { true + false }", Object::Error(format!("{}", "unknown operator: BOOLEAN + BOOLEAN")));
+        compare("
 if (10 > 1) {
     if (10 > 1) {
-       return true + false;
+        return true + false;
     }
 
     return 1;
 }
-",
-                expected: "unknown operator: BOOLEAN + BOOLEAN",
-            },
-            Test {
-                input: "foobar",
-                expected: "identifier not found: foobar",
-            },
-            Test {
-                input: r#"3 + "hello there""#,
-                expected: "type mismatch: INTEGER + STRING",
-            },
-            Test {
-                input: r#""3" + true"#,
-                expected: "type mismatch: STRING + BOOLEAN",
-            },
-            Test {
-                input: r#""b" - "b""#,
-                expected: "unknown operator: STRING - STRING",
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            test_error_object(evaluated, test.expected);
-        }
+", Object::Error(format!("{}", "unknown operator: BOOLEAN + BOOLEAN")));
+        compare("foobar", Object::Error(format!("{}", "identifier not found: foobar")));
+        compare(r#"3 + "hello there""#, Object::Error(format!("{}", "type mismatch: INTEGER + STRING")));
+        compare(r#""3" + true"#, Object::Error(format!("{}", "type mismatch: STRING + BOOLEAN")));
+        compare(r#""b" - "b""#, Object::Error(format!("{}", "unknown operator: STRING - STRING")));
     }
 
     #[test]
     fn test_eval_let_statements() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: i64,
-        }
-
-        let tests = vec![
-            Test {
-                input: "let a = 5; a;",
-                expected: 5,
-            },
-            Test {
-                input: "let a = 5 * 5; a;",
-                expected: 25,
-            },
-            Test {
-                input: "let a = 5; let b = a; b;",
-                expected: 5,
-            },
-            Test {
-                input: "let a = 5; let b = a; let c = a + b + 5; c;",
-                expected: 15,
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            test_integer_object(evaluated, Some(test.expected));
-        }
+        compare("let a = 5; a;", Object::Integer(5));
+        compare("let a = 5 * 5; a;", Object::Integer(25));
+        compare("let a = 5; let b = a; b;", Object::Integer(5));
+        compare("let a = 5; let b = a; let c = a + b + 5; c;", Object::Integer(15));
     }
 
     #[test]
@@ -918,72 +583,19 @@ if (10 > 1) {
 
     #[test]
     fn test_eval_function() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: i64,
-        }
-
-        let tests = vec![
-            Test {
-                input: "let identity = fn(x) { x; }; identity(5)",
-                expected: 5,
-            },
-            Test {
-                input: "let identity = fn(x) { x; }; identity(5)",
-                expected: 5,
-            },
-            Test {
-                input: "let double = fn(x) { x * 2 }; double(5)",
-                expected: 10,
-            },
-            Test {
-                input: "let add = fn(x, y) { x + y }; add(5, 5);",
-                expected: 10,
-            },
-            Test {
-                input: "let add = fn(x, y) { x + y }; add(5, 5);",
-                expected: 10,
-            },
-            Test {
-                input: "let add = fn(x, y) { x + y }; add(5 + 5, add(5, 5));",
-                expected: 20,
-            },
-            Test {
-                input: "fn(x) { x; }(5)",
-                expected: 5,
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            test_integer_object(evaluated, Some(test.expected));
-        }
+        compare("let identity = fn(x) { x; }; identity(5)", Object::Integer(5));
+        compare("let identity = fn(x) { x; }; identity(5)", Object::Integer(5));
+        compare("let double = fn(x) { x * 2 }; double(5)", Object::Integer(10));
+        compare("let add = fn(x, y) { x + y }; add(5, 5);", Object::Integer(10));
+        compare("let add = fn(x, y) { x + y }; add(5, 5);", Object::Integer(10));
+        compare("let add = fn(x, y) { x + y }; add(5 + 5, add(5, 5));", Object::Integer(20));
+        compare("fn(x) { x; }(5)", Object::Integer(5));
     }
 
     #[test]
     fn test_eval_string_expressions() {
-        struct Test<'a> {
-            input: &'a str,
-            expected: Object,
-        }
-
-        let tests = vec![
-            Test {
-                input: r#""hello world""#,
-                expected: Object::Str(String::from("hello world")),
-            },
-            Test {
-                input: r#""hello \"world\"""#,
-                expected: Object::Str(String::from("hello \"world\"")),
-            },
-        ];
-
-        for test in tests.iter() {
-            let evaluated = test_eval(test.input).unwrap();
-
-            assert_eq!(evaluated, test.expected);
-        }
+        compare(r#""hello world""#, Object::Str(String::from("hello world")));
+        compare(r#""hello \"world\"""#, Object::Str(String::from("hello \"world\"")));
     }
 
 }
