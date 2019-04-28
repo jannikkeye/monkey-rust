@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::ast::{boolean, if_expression, int, string};
+use crate::ast::{boolean, if_expression, int, string, array};
 use crate::ast::{
     expression::Expression,
     identifier::Identifier,
@@ -290,6 +290,7 @@ impl Evaluator {
             },
             NodeKind::Block(block) => self.eval_statements(&block.statements),
             NodeKind::Expression(expression) => match expression {
+                Expression::Array(array) => self.eval(array),
                 Expression::Str(string_literal) => self.eval(string_literal),
                 Expression::Int(integer_expression) => self.eval(integer_expression),
                 Expression::Bool(boolean_expression) => self.eval(boolean_expression),
@@ -358,8 +359,19 @@ impl Evaluator {
             NodeKind::Boolean(boolean) => Some(self.eval_boolean(boolean)),
             NodeKind::StringLiteral(string_literal) => Some(self.eval_string(string_literal)),
             NodeKind::Identifier(identifier) => self.eval_identifier(identifier),
+            NodeKind::Array(array) => Some(self.eval_array(array)),
             _ => None,
         }
+    }
+
+    fn eval_array(&mut self, array_object: &array::Array) -> Object {
+        let elements = self.eval_expressions(array_object.clone().elements.into_iter().map(|v| Box::new(v)).collect());
+
+        if let Some(Object::Error(_)) = elements[0] {
+            return elements[0].clone().unwrap();
+        }
+
+        Object::Array(elements.into_iter().map(|v| v.unwrap()).collect())
     }
 
     fn eval_string(&self, string_literal: &string::StringLiteral) -> Object {
@@ -611,5 +623,10 @@ if (10 > 1) {
         compare(r#"len("")"#, Object::Integer(0));
         compare(r#"len("four")"#, Object::Integer(4));
         compare(r#"len("hello world")"#, Object::Integer(11));
+    }
+
+    #[test]
+    fn test_eval_array() {
+        compare("[1, 2, 3, 4]", Object::Array(vec![Object::Integer(1), Object::Integer(2), Object::Integer(3), Object::Integer(4)]));
     }
 }

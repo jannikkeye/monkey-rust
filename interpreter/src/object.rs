@@ -14,6 +14,7 @@ pub const ERROR_OBJ: &'static str = "ERROR";
 pub const FUNCTION_OBJ: &'static str = "FUNCTION";
 pub const STRING_OBJ : &'static str = "STRING";
 pub const BUILTIN_OBJ: &'static str = "BUILTIN";
+pub const ARRAY_OBJ: &'static str = "ARRAY";
 
 pub type BuiltInFunctionSig = fn(&[Option<Object>]) -> Object;
 
@@ -46,13 +47,8 @@ pub enum Object {
     Error(String),
     Function(Vec<Identifier>, BlockStatement, Rc<RefCell<Environment>>),
     BuiltInFunction(BuiltInFunction),
+    Array(Vec<Object>),
 }
-
-// impl<T> fmt::Debug for BuiltInFunction<T> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "builtin function")
-//     }
-// }
 
 impl Object {
     pub fn is_error(&self) -> bool {
@@ -93,6 +89,7 @@ impl Object {
             Object::Function(_, _, _) => FUNCTION_OBJ,
             Object::Str(_) => STRING_OBJ,
             Object::BuiltInFunction(_) => BUILTIN_OBJ,
+            Object::Array(_) => ARRAY_OBJ,
         }
     }
 }
@@ -127,6 +124,7 @@ impl fmt::Display for Object {
                 },
                 Object::Str(s) => s.to_string(),
                 Object::BuiltInFunction(_) => format!("{}", "builtin function"),
+                Object::Array(array) => format!("{:?}", array),
             }
         )
     }

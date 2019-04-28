@@ -12,6 +12,8 @@ pub enum TokenKind {
     RPAREN,
     LBRACE,
     RBRACE,
+    LBRACKET,
+    RBRACKET,
     FUNCTION,
     LET,
     BANG,
@@ -47,6 +49,10 @@ impl Token {
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         let literal = String::from_utf8(bytes).unwrap();
 
+        if literal.chars().all(|v| v.is_digit(10)) {
+            return Token::new(TokenKind::INT, &literal);
+        }
+
         match literal.as_ref() {
             "let" => Token::new(TokenKind::LET, &literal),
             "fn" => Token::new(TokenKind::FUNCTION, &literal),
@@ -58,6 +64,8 @@ impl Token {
             "+" => Token::new(TokenKind::PLUS, &literal),
             "{" => Token::new(TokenKind::LBRACE, &literal),
             "}" => Token::new(TokenKind::RBRACE, &literal),
+            "[" => Token::new(TokenKind::LBRACKET, &literal),
+            "]" => Token::new(TokenKind::RBRACKET, &literal),
             "!" => Token::new(TokenKind::BANG, &literal),
             "-" => Token::new(TokenKind::MINUS, &literal),
             "/" => Token::new(TokenKind::SLASH, &literal),
@@ -77,6 +85,10 @@ impl Token {
     }
 
     pub fn from_literal(literal: &str) -> Self {
+        if let Ok(_) = literal.parse::<i64>() {
+            return Token::new(TokenKind::INT, &literal);
+        }
+
         match literal {
             "let" => Token::new(TokenKind::LET, &literal),
             "fn" => Token::new(TokenKind::FUNCTION, &literal),
@@ -88,6 +100,8 @@ impl Token {
             "+" => Token::new(TokenKind::PLUS, &literal),
             "{" => Token::new(TokenKind::LBRACE, &literal),
             "}" => Token::new(TokenKind::RBRACE, &literal),
+            "[" => Token::new(TokenKind::LBRACKET, &literal),
+            "]" => Token::new(TokenKind::RBRACKET, &literal),
             "!" => Token::new(TokenKind::BANG, &literal),
             "-" => Token::new(TokenKind::MINUS, &literal),
             "/" => Token::new(TokenKind::SLASH, &literal),

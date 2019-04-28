@@ -10,6 +10,7 @@ pub mod prefix;
 pub mod program;
 pub mod statement;
 pub mod string;
+pub mod array;
 
 #[derive(Debug)]
 pub enum NodeKind<'a> {
@@ -26,6 +27,7 @@ pub enum NodeKind<'a> {
     Call(&'a call::Call),
     Block(&'a statement::BlockStatement),
     StringLiteral(&'a string::StringLiteral),
+    Array(&'a array::Array),
 }
 
 pub trait Node {

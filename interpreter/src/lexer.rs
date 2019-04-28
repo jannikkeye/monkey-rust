@@ -213,7 +213,8 @@ if (5 < 10) {
 10 != 9;
 "foobar"
 "foo bar"
-"\"foo\" bar
+"hello \"world\""
+[1, 2];
    "#;
         let matches: Vec<Token> = vec![
             Token::new(TokenKind::LET, "let"),
@@ -292,6 +293,12 @@ if (5 < 10) {
             Token::new(TokenKind::STRING, "foobar"),
             Token::new(TokenKind::STRING, "foo bar"),
             Token::new(TokenKind::STRING, "hello \"world\""),
+            Token::new(TokenKind::LBRACKET, "["),
+            Token::new(TokenKind::INT, "1"),
+            Token::new(TokenKind::COMMA, ","),
+            Token::new(TokenKind::INT, "2"),
+            Token::new(TokenKind::RBRACKET, "]"),
+            Token::new(TokenKind::SEMICOLON, ";"),
             Token::new(TokenKind::EOF, ""),
         ];
 

@@ -9,6 +9,7 @@ use crate::ast::{
     infix::Infix,
     int::IntegerLiteral,
     prefix::Prefix,
+    array::Array,
     program::Program,
     statement::{BlockStatement, ExpressionStatement, LetStatement, ReturnStatement, Statement},
 };
@@ -88,16 +89,48 @@ impl<'a> Parser<'a> {
 
         let expression = self.parse_expression(Precedence::LOWEST);
 
-        if !self.expect_peek(TokenKind::RPAREN) {
+        if !self.expect_peek(&TokenKind::RPAREN) {
             return None;
         }
 
         expression
     }
 
+    fn parse_expression_list(&mut self, end: TokenKind) -> Option<Vec<Expression>> {
+        let mut list = vec![];
+
+        if self.peek_token_is(&end) {
+            self.next_token();
+            
+            return Some(list);
+        }
+
+        self.next_token();
+
+        list.push(self.parse_expression(Precedence::LOWEST).unwrap());
+
+        while self.peek_token_is(&TokenKind::COMMA) {
+            self.next_token();
+            self.next_token();
+
+            list.push(self.parse_expression(Precedence::LOWEST).unwrap());
+        }
+
+        if !self.expect_peek(&end) {
+            return None;
+        }
+
+        Some(list)
+    }
+
+    fn parse_array_literal(&mut self) -> Option<Expression> {
+        Some(Expression::Array(Array { token: self.current_token.clone().unwrap(), elements: self.parse_expression_list(TokenKind::RBRACKET).unwrap_or(vec![]) }))
+    }
+
     fn parse_prefix(&mut self) -> Option<Expression> {
         if let Some(token) = &self.current_token {
             match token.kind {
+                TokenKind::LBRACKET => return self.parse_array_literal(),
                 TokenKind::LPAREN => return self.parse_grouped_expression(),
                 TokenKind::IF => return self.parse_if_expression(),
                 TokenKind::FUNCTION => return self.parse_function_literal(),
@@ -120,13 +153,13 @@ impl<'a> Parser<'a> {
         if let Some(token) = &self.current_token {
             let mut function_literal = FunctionLiteral::new(token);
 
-            if !self.expect_peek(TokenKind::LPAREN) {
+            if !self.expect_peek(&TokenKind::LPAREN) {
                 return None;
             }
 
             function_literal.parameters = self.parse_function_parameters();
 
-            if !self.expect_peek(TokenKind::LBRACE) {
+            if !self.expect_peek(&TokenKind::LBRACE) {
                 return None;
             }
 
@@ -141,7 +174,7 @@ impl<'a> Parser<'a> {
     fn parse_function_parameters(&mut self) -> Vec<Identifier> {
         let mut identifiers = vec![];
 
-        if self.peek_token_is(TokenKind::RPAREN) {
+        if self.peek_token_is(&TokenKind::RPAREN) {
             self.next_token();
 
             return identifiers;
@@ -154,7 +187,7 @@ impl<'a> Parser<'a> {
 
             identifiers.push(identifier);
 
-            while self.peek_token_is(TokenKind::COMMA) {
+            while self.peek_token_is(&TokenKind::COMMA) {
                 self.next_token();
                 self.next_token();
 
@@ -164,7 +197,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            if !self.expect_peek(TokenKind::RPAREN) {
+            if !self.expect_peek(&TokenKind::RPAREN) {
                 return vec![];
             }
         }
@@ -176,7 +209,7 @@ impl<'a> Parser<'a> {
         if let Some(token) = &self.current_token {
             let mut if_expression = If::new(&token);
 
-            if !self.expect_peek(TokenKind::LPAREN) {
+            if !self.expect_peek(&TokenKind::LPAREN) {
                 return None;
             }
 
@@ -185,20 +218,20 @@ impl<'a> Parser<'a> {
             if_expression.condition =
                 Some(Box::new(self.parse_expression(Precedence::LOWEST).unwrap()));
 
-            if !self.expect_peek(TokenKind::RPAREN) {
+            if !self.expect_peek(&TokenKind::RPAREN) {
                 return None;
             }
 
-            if !self.expect_peek(TokenKind::LBRACE) {
+            if !self.expect_peek(&TokenKind::LBRACE) {
                 return None;
             }
 
             if_expression.consequence = self.parse_block_statement();
 
-            if self.peek_token_is(TokenKind::ELSE) {
+            if self.peek_token_is(&TokenKind::ELSE) {
                 self.next_token();
 
-                if !self.expect_peek(TokenKind::LBRACE) {
+                if !self.expect_peek(&TokenKind::LBRACE) {
                     return None;
                 }
 
@@ -253,7 +286,7 @@ impl<'a> Parser<'a> {
     fn parse_call_arguments(&mut self) -> Option<Vec<Box<Expression>>> {
         let mut args = vec![];
 
-        if self.peek_token_is(TokenKind::RPAREN) {
+        if self.peek_token_is(&TokenKind::RPAREN) {
             self.next_token();
 
             return Some(args);
@@ -265,7 +298,7 @@ impl<'a> Parser<'a> {
             args.push(Box::new(expression));
         }
 
-        while self.peek_token_is(TokenKind::COMMA) {
+        while self.peek_token_is(&TokenKind::COMMA) {
             self.next_token();
             self.next_token();
 
@@ -274,7 +307,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if !self.expect_peek(TokenKind::RPAREN) {
+        if !self.expect_peek(&TokenKind::RPAREN) {
             return None;
         }
 
@@ -362,11 +395,11 @@ impl<'a> Parser<'a> {
 
             statement.expression = self.parse_expression(Precedence::LOWEST);
 
-            if self.peek_token_is(TokenKind::SEMICOLON) {
+            if self.peek_token_is(&TokenKind::SEMICOLON) {
                 self.next_token();
             }
 
-            if self.peek_token_is(TokenKind::EOF) {
+            if self.peek_token_is(&TokenKind::EOF) {
                 self.next_token();
             }
 
@@ -384,6 +417,7 @@ impl<'a> Parser<'a> {
                 TokenKind::IF => true,
                 TokenKind::FUNCTION => true,
                 TokenKind::LPAREN => true,
+                TokenKind::LBRACKET => true,
                 _ => false,
             };
         } else {
@@ -432,7 +466,7 @@ impl<'a> Parser<'a> {
             left_expr = self.parse_identifier();
         };
 
-        while !self.peek_token_is(TokenKind::SEMICOLON) && precendence < self.peek_precedence() {
+        while !self.peek_token_is(&TokenKind::SEMICOLON) && precendence < self.peek_precedence() {
             if !self.is_infix_expression() {
                 return left_expr;
             }
@@ -456,7 +490,7 @@ impl<'a> Parser<'a> {
 
                 self.next_token();
 
-                if self.peek_token_is(TokenKind::EOF) {
+                if self.peek_token_is(&TokenKind::EOF) {
                     self.next_token();
                 }
 
@@ -471,7 +505,7 @@ impl<'a> Parser<'a> {
             Some(token) => {
                 let mut let_statement = LetStatement::new(&token);
 
-                if !self.expect_peek(TokenKind::IDENT) {
+                if !self.expect_peek(&TokenKind::IDENT) {
                     return None;
                 }
 
@@ -479,7 +513,7 @@ impl<'a> Parser<'a> {
 
                 let_statement.name = Some(Identifier::new(&identifier, &identifier.literal));
 
-                if !self.expect_peek(TokenKind::ASSIGN) {
+                if !self.expect_peek(&TokenKind::ASSIGN) {
                     return None;
                 }
 
@@ -506,9 +540,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn peek_token_is(&self, kind: TokenKind) -> bool {
+    fn peek_token_is(&self, kind: &TokenKind) -> bool {
         match &self.peek_token {
-            Some(token) => token.kind == kind,
+            Some(token) => token.kind == *kind,
             None => false,
         }
     }
@@ -533,10 +567,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_peek(&mut self, kind: TokenKind) -> bool {
+    fn expect_peek(&mut self, kind: &TokenKind) -> bool {
         match &self.peek_token {
             Some(token) => {
-                if token.kind == kind {
+                if token.kind == *kind {
                     self.next_token();
 
                     return true;
@@ -550,7 +584,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn peek_error(&mut self, kind: TokenKind) {
+    fn peek_error(&mut self, kind: &TokenKind) {
         let peek_token = self.peek_token.clone();
 
         let error = format!(
@@ -1332,6 +1366,38 @@ let nine = 9;
             }
         } else {
             panic!("not an expression");
+        }
+    }
+
+    #[test]
+    fn test_parsing_array_literals() {
+        let input = "[1, 2 * 2, 3 + 3]";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().expect("failed to parse program");
+        let stmt = &program.statements[0];
+
+        if let Statement::Expression(expression) = stmt {
+            if let Some(Expression::Array(array)) = &expression.expression {
+                assert_eq!(array.elements.len(), 3);
+                assert_eq!(array.elements[0], Expression::Int(IntegerLiteral::new(&Token::from_literal("1"), "1")));
+                assert_eq!(array.elements[1], Expression::Infix(Infix::new(
+                    &Token::from_literal("*"),
+                    Some(Expression::Int(IntegerLiteral::new(&Token::from_literal("2"), "2"))),
+                    "*",
+                    Some(Expression::Int(IntegerLiteral::new(&Token::from_literal("2"), "2"))),
+                )));
+                assert_eq!(array.elements[2], Expression::Infix(Infix::new(
+                    &Token::from_literal("+"),
+                    Some(Expression::Int(IntegerLiteral::new(&Token::from_literal("3"), "3"))),
+                    "+",
+                    Some(Expression::Int(IntegerLiteral::new(&Token::from_literal("3"), "3"))),
+                )));
+            } else {
+                panic!("Not an array expression.");
+            }
+        } else {
+            panic!("Not an expression");
         }
     }
 }
