@@ -79,6 +79,10 @@ impl Object {
         self.kind() == STRING_OBJ
     }
 
+    pub fn is_array(&self) -> bool {
+        self.kind() == ARRAY_OBJ
+    }
+
     pub fn kind(&self) -> &str {
         match self {
             Object::Integer(_) => INTEGER_OBJ,
@@ -124,7 +128,22 @@ impl fmt::Display for Object {
                 },
                 Object::Str(s) => s.to_string(),
                 Object::BuiltInFunction(_) => format!("{}", "builtin function"),
-                Object::Array(array) => format!("{:?}", array),
+                Object::Array(array) => {
+                    let mut string = String::new();
+                    
+                    string.push('[');
+
+                    let string_elements: Vec<String> = array
+                        .iter()
+                        .map(std::string::ToString::to_string)
+                        .collect();
+                    
+                    string.push_str(&string_elements.join(", "));
+                    
+                    string.push(']');
+
+                    string
+                },
             }
         )
     }

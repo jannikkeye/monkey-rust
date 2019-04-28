@@ -11,6 +11,7 @@ pub mod program;
 pub mod statement;
 pub mod string;
 pub mod array;
+pub mod index_expression;
 
 #[derive(Debug)]
 pub enum NodeKind<'a> {
@@ -28,6 +29,7 @@ pub enum NodeKind<'a> {
     Block(&'a statement::BlockStatement),
     StringLiteral(&'a string::StringLiteral),
     Array(&'a array::Array),
+    IndexExpression(&'a index_expression::IndexExpression),
 }
 
 pub trait Node {

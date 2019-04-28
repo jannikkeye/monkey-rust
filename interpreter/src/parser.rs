@@ -11,6 +11,7 @@ use crate::ast::{
     prefix::Prefix,
     array::Array,
     program::Program,
+    index_expression::IndexExpression,
     statement::{BlockStatement, ExpressionStatement, LetStatement, ReturnStatement, Statement},
 };
 use crate::lexer::Lexer;
@@ -28,6 +29,7 @@ enum Precedence {
     PRODUCT = 5,
     PREFIX = 6,
     CALL = 7,
+    INDEX = 8,
 }
 
 pub struct Parser<'a> {
@@ -67,6 +69,7 @@ impl<'a> Parser<'a> {
             (TokenKind::SLASH, Precedence::PRODUCT),
             (TokenKind::ASTERIKS, Precedence::PRODUCT),
             (TokenKind::LPAREN, Precedence::CALL),
+            (TokenKind::LBRACKET, Precedence::INDEX),
         ];
 
         for p in precedences {
@@ -322,6 +325,12 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            if token.kind == TokenKind::LBRACKET {
+                if let Some(l) = left {
+                    return self.parse_index_expression(l);
+                }
+            }
+
             let mut infix = Infix::new(&token, left, &token.literal, None);
             let precedence = self.current_precedence();
 
@@ -435,8 +444,10 @@ impl<'a> Parser<'a> {
                     || token.kind == TokenKind::FALSE
                     || token.kind == TokenKind::RPAREN
                     || token.kind == TokenKind::RBRACE
+                    || token.kind == TokenKind::RBRACKET
                 {
                     return match peek_token.kind {
+                        TokenKind::LBRACKET => true,
                         TokenKind::LPAREN => true,
                         TokenKind::PLUS => true,
                         TokenKind::MINUS => true,
@@ -455,6 +466,20 @@ impl<'a> Parser<'a> {
         } else {
             return false;
         }
+    }
+
+    fn parse_index_expression(&mut self, left: Expression) -> Option<Expression> {
+        let token = self.current_token.clone().unwrap();
+
+        self.next_token();
+
+        let index = self.parse_expression(Precedence::LOWEST);
+
+        if !self.expect_peek(&TokenKind::RBRACKET) {
+            return None;
+        }
+
+        Some(Expression::Index(IndexExpression::new(&token, left, index.unwrap())))
     }
 
     fn parse_expression(&mut self, precendence: Precedence) -> Option<Expression> {
@@ -1101,12 +1126,21 @@ let nine = 9;
                 input: "a + add(b * c) + d",
                 expected: "((a + add((b * c))) + d)",
             },
+            Test {
+                input: "a * [1, 2, 3, 4][b * c] * d",
+                expected: "((a * ([1, 2, 3, 4][(b * c)])) * d)",
+            },
+            Test {
+                input: "add(a * b[2], b[1], 2 * [1, 2][1])",
+                expected: "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
+            },
         ];
 
         for test in tests.iter() {
             let lexer = Lexer::new(test.input);
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program().expect("parsing failed");
+
             for e in parser.errors.iter() {
                 println!("parse error: {}", e);
             }
@@ -1395,6 +1429,34 @@ let nine = 9;
                 )));
             } else {
                 panic!("Not an array expression.");
+            }
+        } else {
+            panic!("Not an expression");
+        }
+    }
+
+    #[test]
+    fn test_parsing_index_expressions() {
+        let input = "[1][0]";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().expect("failed to parse program");
+        let stmt = &program.statements[0];
+
+        if let Statement::Expression(expression) = stmt {
+            if let Some(Expression::Index(index_expression)) = &expression.expression {
+                if let Expression::Array(array) = &*index_expression.left {
+                    assert_eq!(array.elements.len(), 1);
+                    assert_eq!(array.elements[0], Expression::Int(IntegerLiteral::new(&Token::from_literal("1"), "1")));
+                } else {
+                    panic!("Not an array expression.");
+                }
+
+                if let Expression::Int(integer) = &*index_expression.index {
+                    assert_eq!(integer, &IntegerLiteral::new(&Token::from_literal("1"), "1"));
+                } else {
+                    panic!("Not an integer expression.");
+                }
             }
         } else {
             panic!("Not an expression");

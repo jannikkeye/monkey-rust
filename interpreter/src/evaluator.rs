@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::ast::{boolean, if_expression, int, string, array};
+use crate::ast::{boolean, if_expression, int, string, array, index_expression};
 use crate::ast::{
     expression::Expression,
     identifier::Identifier,
@@ -290,6 +290,7 @@ impl Evaluator {
             },
             NodeKind::Block(block) => self.eval_statements(&block.statements),
             NodeKind::Expression(expression) => match expression {
+                Expression::Index(index_expression) => Some(self.eval_index_expression(index_expression)),
                 Expression::Array(array) => self.eval(array),
                 Expression::Str(string_literal) => self.eval(string_literal),
                 Expression::Int(integer_expression) => self.eval(integer_expression),
@@ -361,6 +362,39 @@ impl Evaluator {
             NodeKind::Identifier(identifier) => self.eval_identifier(identifier),
             NodeKind::Array(array) => Some(self.eval_array(array)),
             _ => None,
+        }
+    }
+
+    fn eval_index_expression(&mut self, index_expression: &index_expression::IndexExpression) -> Object {
+        let left = self.eval(*index_expression.left.clone()).unwrap();
+
+        if left.is_error() {
+            return left;
+        }
+
+        let index = self.eval(*index_expression.index.clone()).unwrap();
+
+        if index.is_error() {
+            return index;
+        }
+
+        if left.is_array() && index.is_integer() {
+            return self.eval_array_index_expression(left, index);
+        }
+
+        Object::Error(format!("index operator not supported: {}", left.kind()))
+    }
+
+    fn eval_array_index_expression(&mut self, left: Object, index: Object) -> Object {
+        match (left, index) {
+            (Object::Array(elements), Object::Integer(idx)) => {
+                if idx < 0 || idx > elements.len() as i64 {
+                    return Object::Null;
+                }
+
+                elements[idx as usize].clone()
+            },
+            _ => Object::Null,
         }
     }
 
@@ -628,5 +662,12 @@ if (10 > 1) {
     #[test]
     fn test_eval_array() {
         compare("[1, 2, 3, 4]", Object::Array(vec![Object::Integer(1), Object::Integer(2), Object::Integer(3), Object::Integer(4)]));
+    }
+
+    #[test]
+    fn test_eval_index_expressions() {
+        compare("[1][0]", Object::Integer(1));
+        compare("[1 + 1, 2 * 5][1]", Object::Integer(10));
+        compare("[len(\"four\")][0]", Object::Integer(4));
     }
 }

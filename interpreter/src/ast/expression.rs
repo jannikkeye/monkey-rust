@@ -8,6 +8,7 @@ use super::int::IntegerLiteral;
 use super::prefix::Prefix;
 use super::string::StringLiteral;
 use super::array::Array;
+use super::index_expression::IndexExpression;
 use super::{Node, NodeKind};
 use std::fmt;
 
@@ -23,6 +24,7 @@ pub enum Expression {
     Call(Call),
     Str(StringLiteral),
     Array(Array),
+    Index(IndexExpression),
 }
 
 impl PartialEq for Expression {
@@ -67,6 +69,10 @@ impl PartialEq for Expression {
             Expression::Array(array) => match other {
                 Expression::Array(other_array) => array == other_array,
                 _ => false,
+            },
+            Expression::Index(index_expression) => match other {
+                Expression::Index(other_index_expression) => index_expression == other_index_expression,
+                _ => false,
             }
         }
     }
@@ -85,6 +91,7 @@ impl Node for Expression {
             Expression::Call(call) => &call.token_literal(),
             Expression::Str(string_literal) => &string_literal.token_literal(),
             Expression::Array(array) => &array.token_literal(),
+            Expression::Index(index_expression) => &index_expression.token_literal(),
         }
     }
 
@@ -106,6 +113,7 @@ impl Node for &Expression {
             Expression::Call(call) => &call.token_literal(),
             Expression::Str(string_literal) => &string_literal.token_literal(),
             Expression::Array(array) => &array.token_literal(),
+            Expression::Index(index_expression) => &index_expression.token_literal(),
         }
     }
 
@@ -147,6 +155,7 @@ impl fmt::Display for Expression {
             Expression::Call(call) => write!(f, "{}", call.to_string()),
             Expression::Str(string_literal) => write!(f, "{}", string_literal.value),
             Expression::Array(array) => write!(f, "{}", array),
+            Expression::Index(index_expression) => write!(f, "{}", index_expression.to_string()),
         }
     }
 }
